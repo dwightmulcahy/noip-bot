@@ -1,0 +1,12 @@
+services:
+  noip-bot:
+    build: .
+    container_name: noip-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BIND_ADDR: 0.0.0.0
+      PORT: 8080
+    ports:
+      - "8080:8080"

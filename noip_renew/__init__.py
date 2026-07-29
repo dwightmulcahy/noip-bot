@@ -1,0 +1,1 @@
+from noip_renew.noip_renew import Robot
