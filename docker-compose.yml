@@ -10,3 +10,9 @@ services:
       PORT: 8080
     ports:
       - "8080:8080"
+    volumes:
+      # Persist your .env (secrets) outside the container so it survives
+      # rebuilds and can be edited without touching the image.
+      - /share/Data/config/noip-bot/.env:/app/.env
+      # Debug/error screenshots (see SCREENSHOT_DIR in the Dockerfile).
+      - /share/Data/noip-bot/screenshots:/data/screenshots

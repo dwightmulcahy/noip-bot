@@ -105,6 +105,11 @@ class Robot:
         self.username = username
         self.password = password
         self.code_reader = code_reader  # emailServer.VerificationCodeReader, optional
+        # Where debug/error screenshots get written. Defaults to the
+        # current directory (unchanged behavior); set SCREENSHOT_DIR to
+        # persist them elsewhere, e.g. a mounted volume in Docker.
+        self.screenshot_dir = os.environ.get('SCREENSHOT_DIR', '.')
+        os.makedirs(self.screenshot_dir, exist_ok=True)
         self.browser = self.init_browser()
         self.next_renewal = 0
         self.updatedHosts = []
@@ -182,11 +187,16 @@ class Robot:
         browser.set_page_load_timeout(90)    # Extended timeout for Raspberry Pi.
         return browser
 
+    def screenshot(self, filename):
+        """Save a screenshot into self.screenshot_dir (defaults to cwd;
+        configurable via SCREENSHOT_DIR)."""
+        self.browser.save_screenshot(os.path.join(self.screenshot_dir, filename))
+
     def login(self):
         logging.info(f'Opening {Robot.LOGIN_URL}...')
         self.browser.get(Robot.LOGIN_URL)
         if self.debug > 1:
-            self.browser.save_screenshot('debug1.png')
+            self.screenshot('debug1.png')
 
         logging.info('Logging in...')
         ele_usr = self.browser.find_element(By.XPATH, '//form[@id=\'clogs\']//input[@name=\'username\']')
@@ -223,7 +233,7 @@ class Robot:
             login_button.click()
             if self.debug > 1:
                 time.sleep(1)
-                self.browser.save_screenshot('debug2.png')
+                self.screenshot('debug2.png')
 
         # The login button's onclick generates a reCAPTCHA v3 token
         # asynchronously *before* actually submitting the form, so the
@@ -237,7 +247,7 @@ class Robot:
                 or d.find_elements(By.CSS_SELECTOR, '#otp-input input')
             )
         except TimeoutException:
-            self.browser.save_screenshot('login_stuck.png')
+            self.screenshot('login_stuck.png')
             raise Exception(
                 f'Still on the login page 30s after submitting (current URL: {self.browser.current_url}). '
                 f'Likely rejected silently (e.g. reCAPTCHA score) rather than a wrong-password error.'
@@ -261,12 +271,12 @@ class Robot:
 
         logging.info('Verification code challenge detected; checking email...')
         if not self.code_reader:
-            self.browser.save_screenshot('verification_code_needed.png')
+            self.screenshot('verification_code_needed.png')
             raise Exception('Verification code required but no code_reader configured.')
 
         code = self.code_reader.wait_for_code(sender='noip.com', timeout=120)
         if not code:
-            self.browser.save_screenshot('verification_code_timeout.png')
+            self.screenshot('verification_code_timeout.png')
             raise Exception('Timed out waiting for verification code email.')
 
         for box, digit in zip(code_inputs, code):
@@ -284,7 +294,7 @@ class Robot:
 
         if self.debug > 1:
             time.sleep(1)
-            self.browser.save_screenshot('debug3.png')
+            self.screenshot('debug3.png')
 
     def open_hosts_page(self):
         logging.info(f'Opening {Robot.HOST_URL}...')
@@ -308,7 +318,7 @@ class Robot:
                 lambda d: d.execute_script('return document.readyState') == 'complete'
             )
         except TimeoutException as e:
-            self.browser.save_screenshot('timeout.png')
+            self.screenshot('timeout.png')
             logging.info(f'Timeout while {step}: {str(e)}')
 
     def update_host(self, host_id, host_name):
@@ -325,7 +335,7 @@ class Robot:
                 logging.info(f'Retrying confirm click for {host_name} after: {str(e)}')
                 time.sleep(2)
         time.sleep(2)
-        self.browser.save_screenshot(f'{host_name}_confirmed.png')
+        self.screenshot(f'{host_name}_confirmed.png')
 
     @staticmethod
     def _extract_host_id(confirm_button):
@@ -349,7 +359,7 @@ class Robot:
         return f'host-{host_id}'
 
     def get_hosts(self):
-        self.browser.save_screenshot('hosts.png')
+        self.screenshot('hosts.png')
         # Only hosts actually needing renewal show a confirm banner, so an
         # empty list here just means nothing is due yet — not an error.
         # Returns (host_id, host_name) pairs rather than WebElements, since
@@ -435,7 +445,7 @@ class Robot:
             self.update_host(host_id, host_name)
             # Confirming resets the ~30-day free-host cycle.
             exp_by_host[host_name] = exp_by_host.get(host_name, 0) + 30
-        self.browser.save_screenshot('results.png')
+        self.screenshot('results.png')
 
         self.host_expirations = exp_by_host
 
@@ -483,7 +493,7 @@ class Robot:
                 rc = 3
         except Exception as e:
             logging.info(str(e))
-            self.browser.save_screenshot('exception.png')
+            self.screenshot('exception.png')
             rc = 2
         finally:
             self.browser.quit()

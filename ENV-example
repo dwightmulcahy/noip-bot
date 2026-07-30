@@ -9,8 +9,12 @@ DEBUG=True
 # need to visually watch a run for debugging.
 HEADLESS=True
 
+# Where debug/error screenshots get written. Defaults to the current
+# directory; set this to persist them to a mounted volume in Docker.
+SCREENSHOT_DIR=.
+
 # webpage bindings
-BIND_ADDR=0.0.0.0
+BIND_ADDR=127.0.0.1
 PORT=80
 
 # Gmail account used to SEND notification emails from the bot

@@ -15,7 +15,8 @@ ENV CHROME_BIN=/usr/bin/chromium \
     PYTHONUNBUFFERED=1 \
     BIND_ADDR=0.0.0.0 \
     PORT=8080 \
-    HEADLESS=true
+    HEADLESS=true \
+    SCREENSHOT_DIR=/data/screenshots
 
 WORKDIR /app
 
