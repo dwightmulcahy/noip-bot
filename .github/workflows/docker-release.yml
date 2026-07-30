@@ -1,0 +1,50 @@
+name: Build and Push Docker Image to Docker Hub
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  docker-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up QEMU for multi-platform builds (optional, but good practice)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Step 3: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 4: Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Step 5: Extract metadata (tags, labels) for Docker
+      - name: Extract Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/your-repo-name # Replace 'your-repo-name' with your actual Docker Hub repository name
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      # Step 6: Build and push Docker image
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
