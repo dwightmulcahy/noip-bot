@@ -10,7 +10,7 @@ DEBUG=True
 HEADLESS=True
 
 # webpage bindings
-BIND_ADDR=127.0.0.1
+BIND_ADDR=0.0.0.0
 PORT=80
 
 # Gmail account used to SEND notification emails from the bot
