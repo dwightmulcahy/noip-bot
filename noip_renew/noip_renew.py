@@ -115,6 +115,7 @@ class Robot:
         self.updatedHosts = []
         self.hosts = []
         self.host_expirations = {}  # {hostname: days_until_expiry}, all hosts with a visible countdown
+        self.host_expiration_dates = {}  # {hostname: date}, every host found, from data-update + 30 days
         # Days before each host's 30-day mark to schedule the next check.
         # Self-calibrates: if a check finds a host isn't actually
         # confirmable yet despite being within this buffer, it's treated
@@ -433,6 +434,9 @@ class Robot:
         last_update_by_host = self.get_last_update_by_host()
         today = datetime.date.today()
         days_until_30 = {host: 30 - (today - dt).days for host, dt in last_update_by_host.items()}
+        self.host_expiration_dates = {
+            host: dt + datetime.timedelta(days=30) for host, dt in last_update_by_host.items()
+        }
 
         exp_by_host = self.get_expiration_days_by_host()
 
@@ -445,6 +449,7 @@ class Robot:
             self.update_host(host_id, host_name)
             # Confirming resets the ~30-day free-host cycle.
             exp_by_host[host_name] = exp_by_host.get(host_name, 0) + 30
+            self.host_expiration_dates[host_name] = today + datetime.timedelta(days=30)
         self.screenshot('results.png')
 
         self.host_expirations = exp_by_host

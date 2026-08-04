@@ -5,7 +5,6 @@ import sys
 import datetime
 from datetime import timedelta, date
 from random import randrange
-from dateutil.relativedelta import *
 
 from zoneinfo import ZoneInfo
 
@@ -90,16 +89,14 @@ def updateHosts():
         if noip.updatedHosts else gmd.bolditalics('No hostnames were updated during this update.')
     ))
 
-    # Create a table of the active hosts and when the need to be updated again
+    # Create a table of every host and when it expires
     hostTable = ''.join([
-        '<style> table, th, td { border: 2px solid black; } </style>\n',
         f'| {gmd.bold("Host Name")} | {gmd.bold("Expires")} |\n',
         gmd.linebreak('|:-------|:-----:|'),
     ])
-    if noip.host_expirations:
-        for host_name, expiration_day in noip.host_expirations.items():
-            expirationDate = (date.today() + relativedelta(days=+expiration_day)).strftime("%m-%d-%Y")
-            hostTable = ''.join([hostTable, gmd.linebreak(f'| {host_name} | {expirationDate} |')])
+    if noip.host_expiration_dates:
+        for host_name, expiration_date in sorted(noip.host_expiration_dates.items(), key=lambda kv: kv[1]):
+            hostTable = ''.join([hostTable, gmd.linebreak(f'| {host_name} | {expiration_date.strftime("%m-%d-%Y")} |')])
 
     emailBody = ''.join([
         gmd.linebreak(f'{updatedHosts}{hostTable}'),

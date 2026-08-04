@@ -1,15 +1,18 @@
 services:
   noip-bot:
-    build: .
+    image: dwightmulcahy/noip-bot:latest
     container_name: noip-bot
     restart: unless-stopped
     env_file:
-      - .env
+      # Absolute path — some Docker frontends (e.g. QNAP Container Station)
+      # resolve a relative "./.env" against a staging directory rather than
+      # wherever this compose file lives, causing a "file not found" error.
+      - /share/Data/config/noip-bot/.env
     environment:
       BIND_ADDR: 0.0.0.0
-      PORT: 8080
+      PORT: 9080
     ports:
-      - "8080:8080"
+      - "9080:9080"
     volumes:
       # Persist your .env (secrets) outside the container so it survives
       # rebuilds and can be edited without touching the image.
