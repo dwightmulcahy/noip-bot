@@ -34,7 +34,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/your-repo-name # Replace 'your-repo-name' with your actual Docker Hub repository name
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/noip-bot
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest
