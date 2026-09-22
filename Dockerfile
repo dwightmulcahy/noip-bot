@@ -1,5 +1,7 @@
 FROM python:3.12-slim-bookworm
 
+ARG APP_VERSION=0.0.0-dev
+
 # chromium-driver installs to /usr/bin/chromedriver, which the app already
 # tries first (see noip_renew/noip_renew.py). Debian keeps chromium and
 # chromium-driver version-matched, so no separate driver-download step
@@ -14,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Selenium looks for a binary named "chrome"/"google-chrome" by default;
 # Debian's package is named "chromium", so point it there explicitly.
 ENV CHROME_BIN=/usr/bin/chromium \
+    APP_VERSION=${APP_VERSION} \
     PYTHONUNBUFFERED=1 \
     BIND_ADDR=0.0.0.0 \
     PORT=8080 \

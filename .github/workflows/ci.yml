@@ -58,8 +58,9 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-args: |
+            APP_VERSION=0.0.0-dev+${{ github.sha }}
           push: false
           tags: noip-bot:verify
           cache-from: type=gha
           cache-to: type=gha,mode=max
-

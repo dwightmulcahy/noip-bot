@@ -21,6 +21,7 @@ import click_config_file   # https://github.com/phha/click_config_file
 from logging_config import configure_logging
 from state_store import StateStore
 from scheduling import days_until_check, future_check
+from version import get_version
 
 # formatting for log messages
 import logging
@@ -34,7 +35,7 @@ LOCAL_TIMEZONE = os.environ.get("TZ", "America/Costa_Rica")
 # APP_NAME = 'NOIP-BOT'
 APP_NAME = os.path.splitext(os.path.basename(__file__))[0]
 APP_DATE = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(__file__)))
-VERSION = '0.4.0'
+VERSION = get_version()
 
 # setting storage
 settings = Settings()

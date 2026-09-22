@@ -1,6 +1,9 @@
 services:
   noip-bot:
-    build: .
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-0.0.0-dev}
     container_name: noip-bot
     restart: unless-stopped
     env_file:

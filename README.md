@@ -135,6 +135,12 @@ Publishing a GitHub Release builds and pushes a multi-architecture
 dwightmulcahy/noip-bot
 ```
 
+The application version is injected from the GitHub Release tag during the
+Docker build. Tags such as `0.2.3` and `v0.2.3` both make the application
+report version `0.2.3`. Local source runs fall back to
+`git describe --tags --always --dirty`; local Docker builds can set
+`APP_VERSION`.
+
 Configure these GitHub repository secrets before publishing a release:
 
 | Secret | Value |

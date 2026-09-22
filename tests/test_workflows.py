@@ -18,6 +18,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("types:\n      - published", workflow)
         self.assertIn("IMAGE_NAME: dwightmulcahy/noip-bot", workflow)
         self.assertIn("platforms: linux/amd64,linux/arm64", workflow)
+        self.assertIn("APP_VERSION=${{ github.event.release.tag_name }}", workflow)
         self.assertIn("push: true", workflow)
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
