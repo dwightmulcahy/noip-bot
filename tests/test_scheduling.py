@@ -24,6 +24,14 @@ class SchedulingTests(unittest.TestCase):
         self.assertIsNone(future_check("invalid", now))
         self.assertIsNone(future_check(None, now))
 
+    def test_naive_future_timestamp_is_rejected(self):
+        now = datetime(2026, 9, 22, tzinfo=timezone.utc)
+        self.assertIsNone(future_check("2026-09-23T12:00:00", now))
+
+    def test_invalid_fallback_is_clamped_to_one_day(self):
+        self.assertEqual(days_until_check(0, 0), 1)
+        self.assertEqual(days_until_check(None, -4), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

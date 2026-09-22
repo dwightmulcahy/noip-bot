@@ -9,6 +9,11 @@ class VersionTests(unittest.TestCase):
     def test_normalizes_optional_v_prefix(self):
         self.assertEqual(normalize_version("v0.2.3"), "0.2.3")
         self.assertEqual(normalize_version("0.2.3"), "0.2.3")
+        self.assertEqual(normalize_version("version-one"), "version-one")
+
+    def test_environment_value_is_trimmed(self):
+        with patch.dict(os.environ, {"APP_VERSION": "  v2.0.0  "}):
+            self.assertEqual(get_version(), "2.0.0")
 
     def test_environment_version_takes_precedence(self):
         with patch.dict(os.environ, {"APP_VERSION": "v0.2.3"}):

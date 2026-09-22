@@ -22,6 +22,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("push: true", workflow)
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
+        self.assertIn("type=semver,pattern={{version}}", workflow)
+        self.assertIn("type=raw,value=latest", workflow)
+        self.assertIn("provenance: false", workflow)
 
 
 if __name__ == "__main__":

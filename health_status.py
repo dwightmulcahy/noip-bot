@@ -31,6 +31,8 @@ def evaluate_health(state, now=None, overdue_grace_seconds=3600):
     if next_check and now > next_check + timedelta(seconds=overdue_grace_seconds):
         reasons.append("the scheduled renewal check is overdue")
 
+    hosts = state.get("hosts", {})
+    active_hosts = sum(1 for host in hosts.values() if host.get("active", True))
     return {
         "status": "unhealthy" if reasons else "healthy",
         "healthy": not reasons,
@@ -42,5 +44,6 @@ def evaluate_health(state, now=None, overdue_grace_seconds=3600):
         "next_renewal_days": state.get("next_renewal_days"),
         "dry_run": bool(state.get("dry_run", False)),
         "would_renew": state.get("would_renew", []),
-        "host_count": len(state.get("hosts", {})),
+        "host_count": active_hosts,
+        "total_host_count": len(hosts),
     }
