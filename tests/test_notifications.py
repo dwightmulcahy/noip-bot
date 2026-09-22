@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import time
 import unittest
 
 from notifications import send_notification
@@ -18,6 +19,12 @@ class FakeServer:
         if self.error:
             raise self.error
         return self.result
+
+
+class SlowServer:
+    def sendEmail(self, send_to, subject, body):
+        time.sleep(1)
+        return True
 
 
 class NotificationTests(unittest.TestCase):
@@ -73,6 +80,25 @@ class NotificationTests(unittest.TestCase):
         self.assertTrue(send_notification(
             server, "user@example.com", "subject", "body", None, self.logger
         ))
+
+    def test_hung_provider_is_bounded_and_recorded(self):
+        started = time.monotonic()
+        delivered = send_notification(
+            SlowServer(), "user@example.com", "subject", "body",
+            self.store, self.logger, timeout_seconds=0.1,
+        )
+        elapsed = time.monotonic() - started
+        self.assertFalse(delivered)
+        self.assertLess(elapsed, 0.5)
+        error = StateStore(self.path).state["notifications"]["last_error"]
+        self.assertEqual(error["type"], "TimeoutError")
+
+    def test_invalid_timeout_environment_uses_default(self):
+        from unittest.mock import patch
+        from notifications import _delivery_timeout_seconds
+
+        with patch.dict(os.environ, {"NOTIFICATION_TIMEOUT_SECONDS": "invalid"}):
+            self.assertEqual(_delivery_timeout_seconds(), 30.0)
 
 
 if __name__ == "__main__":

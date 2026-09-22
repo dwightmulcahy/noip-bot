@@ -76,6 +76,21 @@ class StateStoreEdgeCaseTests(unittest.TestCase):
             self.assertEqual(host["previous_data_update"], "old")
             self.assertIn("last_verified_renewal", host)
 
+    def test_stale_instances_merge_independent_updates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state.json")
+            scheduler_store = StateStore(path)
+            notification_store = StateStore(path)
+
+            scheduler_store.record_next_check("2026-09-23T12:00:00+00:00")
+            notification_store.record_notification_success()
+
+            state = StateStore(path).state
+            self.assertEqual(
+                state["next_check"], "2026-09-23T12:00:00+00:00"
+            )
+            self.assertIsNotNone(state["notifications"]["last_success"])
+
 
 if __name__ == "__main__":
     unittest.main()

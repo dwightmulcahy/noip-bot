@@ -56,6 +56,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `NOIP_VERIFICATION_EMAIL_TOKEN` | Gmail app password/token for that inbox | empty |
 | `GMAIL_ID` | Gmail sender for notifications | empty |
 | `GMAIL_TOKEN` | Gmail app password/token for notifications | empty |
+| `NOTIFICATION_TIMEOUT_SECONDS` | Maximum notification blocking time | `30` |
 | `BIND_ADDR` | Status server bind address | `0.0.0.0` in Docker |
 | `PORT` | Status server port | `8080` in Docker |
 | `TZ` | Scheduler timezone | `America/Costa_Rica` |
@@ -123,6 +124,9 @@ immediately.
   are recorded under `notifications` in `state.json` and exposed as
   `notification_status` by `/health` and `/status.json`; they do not make the
   renewal health check fail. An unconfigured sender reports `disabled`.
+- State updates use an inter-process file lock and reload the latest state
+  before mutation so scheduler, web, and notification writers do not overwrite
+  one another.
 - Selenium selectors depend on No-IP's website and may need maintenance when
   the site changes.
 - Docker runs Chromium in headless mode with a persistent verbose ChromeDriver
