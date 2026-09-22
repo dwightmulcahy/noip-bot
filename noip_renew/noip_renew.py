@@ -39,6 +39,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 from logging_config import configure_logging
 from state_store import StateStore
+from host_timing import derive_cycle_timing
 
 SCREENSHOT_DIR = os.environ.get('SCREENSHOT_DIR', os.path.join(os.getcwd(), 'screenshots'))
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
@@ -88,6 +89,7 @@ class Robot:
         self.wouldUpdateHosts = []
         self.hosts = []
         self.host_expirations = {}  # {hostname: days_until_expiry}, all hosts with a visible countdown
+        self.host_schedule_days = {}
 
     @staticmethod
     def init_browser(https_proxy=None):
@@ -376,6 +378,9 @@ class Robot:
                     bool(host_id_match) and host_id_match.group(1) in renewable_host_ids
                 ),
             }
+            inventory[hostname].update(
+                derive_cycle_timing(inventory[hostname]['data_update'])
+            )
         return inventory
 
     def update_hosts(self):
@@ -384,17 +389,29 @@ class Robot:
 
         inventory = self.get_host_inventory()
         self.state_store.record_inventory(inventory)
-        exp_by_host = {
+        actual_expirations = {
             hostname: details['expires_in_days']
             for hostname, details in inventory.items()
             if details['expires_in_days'] is not None
+        }
+        schedule_days = {
+            hostname: (
+                details['expires_in_days']
+                if details['expires_in_days'] is not None
+                else details['estimated_days_until_expiry']
+            )
+            for hostname, details in inventory.items()
+            if (
+                details['expires_in_days'] is not None
+                or details['estimated_days_until_expiry'] is not None
+            )
         }
 
         self.hosts = self.get_hosts()
         if not self.hosts:
             log.info('No hostnames need renewal', extra={'event': 'renewal_not_required'})
         for host_id, host_name in self.hosts:
-            expires_in = exp_by_host.get(host_name)
+            expires_in = actual_expirations.get(host_name)
             if self.dry_run:
                 self.wouldUpdateHosts.append(host_name)
                 log.info(
@@ -410,10 +427,17 @@ class Robot:
                 continue
             before_update, after_update = self.update_host(host_id, host_name)
             self.updatedHosts.append(host_name)
-            # Confirming resets the ~30-day free-host cycle.
-            exp_by_host[host_name] = (expires_in or 0) + 30
+            refreshed_host = self.get_host_inventory().get(host_name)
+            if not refreshed_host:
+                raise RuntimeError(
+                    f'Renewed host {host_name} was missing from the refreshed inventory'
+                )
+            if refreshed_host['data_update'] != after_update:
+                raise RuntimeError(
+                    f'Refreshed inventory for {host_name} did not retain the verified data-update'
+                )
             self.state_store.record_host(
-                host_name, before_update, after_update, exp_by_host[host_name]
+                host_name, before_update, after_update, refreshed_host
             )
         self.browser.save_screenshot(screenshot_path('results.png'))
 
@@ -421,8 +445,26 @@ class Robot:
         self.state_store.record_inventory(refreshed_inventory)
         self.state_store.record_would_renew(self.wouldUpdateHosts)
 
-        self.host_expirations = exp_by_host
-        self.next_renewal = min(exp_by_host.values()) if exp_by_host else 0
+        self.host_expirations = {
+            hostname: details['expires_in_days']
+            for hostname, details in refreshed_inventory.items()
+            if details['expires_in_days'] is not None
+        }
+        self.host_schedule_days = {
+            hostname: (
+                details['expires_in_days']
+                if details['expires_in_days'] is not None
+                else details['estimated_days_until_expiry']
+            )
+            for hostname, details in refreshed_inventory.items()
+            if (
+                details['expires_in_days'] is not None
+                or details['estimated_days_until_expiry'] is not None
+            )
+        }
+        self.next_renewal = (
+            min(self.host_schedule_days.values()) if self.host_schedule_days else 0
+        )
         return True
 
     def run(self):

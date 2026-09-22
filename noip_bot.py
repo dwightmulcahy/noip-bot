@@ -34,7 +34,7 @@ LOCAL_TIMEZONE = os.environ.get("TZ", "America/Costa_Rica")
 # APP_NAME = 'NOIP-BOT'
 APP_NAME = os.path.splitext(os.path.basename(__file__))[0]
 APP_DATE = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(__file__)))
-VERSION = '0.3.0'
+VERSION = '0.3.1'
 
 # setting storage
 settings = Settings()

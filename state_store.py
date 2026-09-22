@@ -74,13 +74,14 @@ class StateStore:
         self.state["would_renew"] = list(hostnames)
         self.save()
 
-    def record_host(self, hostname, old_data_update, new_data_update, expires_in_days=None):
+    def record_host(self, hostname, old_data_update, new_data_update, observed_details=None):
         host = self.state["hosts"].setdefault(hostname, {})
+        if observed_details:
+            host.update(observed_details)
         host.update({
             "last_verified_renewal": utc_now(),
             "previous_data_update": old_data_update,
             "data_update": new_data_update,
-            "expires_in_days": expires_in_days,
         })
         self.save()
 

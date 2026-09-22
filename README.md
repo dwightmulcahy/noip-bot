@@ -17,6 +17,8 @@ optional Gmail notifications, and exposes a small status page.
 - Restores a still-future scheduled check instead of rerunning immediately
 - Records every discovered hostname, including hosts not yet renewable
 - Verifies both confirmation-control removal and changed `data-update`
+- Re-reads authoritative host data after renewal instead of fabricating a
+  30-day expiration value
 - Emits one JSON object per log line for ingestion by Docker logging systems
 - Supports a true dry-run mode that never clicks a renewal control
 - Provides a web status page and Docker health check
@@ -107,6 +109,9 @@ immediately.
   “nothing to renew.”
 - A hostname is only recorded as renewed after its confirmation control
   disappears and its `data-update` attribute changes.
+- `expires_in_days` is stored only when No-IP actually displays it. When it
+  is absent, scheduling uses clearly labeled `estimated_expiration` and
+  `estimated_days_until_expiry` fields derived from `data-update`.
 - State is written atomically after each verified hostname and after every run.
 - The exact timezone-aware scheduler date is persisted for both normal checks
   and next-day failure retries.

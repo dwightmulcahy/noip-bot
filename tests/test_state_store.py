@@ -12,7 +12,16 @@ class StateStoreTests(unittest.TestCase):
             path = os.path.join(directory, "state.json")
             store = StateStore(path)
             store.record_run_started()
-            store.record_host("example.ddns.net", "old", "new", 30)
+            store.record_host(
+                "example.ddns.net",
+                "old",
+                "new",
+                {
+                    "expires_in_days": None,
+                    "estimated_days_until_expiry": 30,
+                    "estimated_expiration": "2026-10-21T00:00:00+00:00",
+                },
+            )
             store.record_success(
                 "2026-10-20T00:00:00+00:00",
                 {"example.ddns.net": 30},
