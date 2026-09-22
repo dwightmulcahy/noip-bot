@@ -15,6 +15,7 @@ services:
       HEADLESS: ${HEADLESS:-true}
       CHROMEDRIVER_BIN: /usr/bin/chromedriver
       CHROMEDRIVER_LOG: /app/data/chromedriver.log
+      DRY_RUN: ${DRY_RUN:-false}
     ports:
       - "8080:8080"
     volumes:

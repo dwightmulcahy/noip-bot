@@ -18,6 +18,7 @@ optional Gmail notifications, and exposes a small status page.
 - Records every discovered hostname, including hosts not yet renewable
 - Verifies both confirmation-control removal and changed `data-update`
 - Emits one JSON object per log line for ingestion by Docker logging systems
+- Supports a true dry-run mode that never clicks a renewal control
 - Provides a web status page and Docker health check
 - Provides machine-readable `/health` and `/status.json` endpoints
 - Runs as a non-root container user
@@ -63,6 +64,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `CHROMEDRIVER_BIN` | ChromeDriver executable | `/usr/bin/chromedriver` |
 | `CHROMEDRIVER_LOG` | Persistent verbose driver log | `/app/data/chromedriver.log` |
 | `DEBUG` | Enable debug behavior | `False` |
+| `DRY_RUN` | Discover renewable hosts without clicking Renew | `false` |
 
 Never commit `.env`, Gmail tokens, No-IP credentials, or captured screenshots.
 
@@ -87,6 +89,17 @@ python3 -m unittest discover -s tests -v
 The project archive includes all internal modules. If PyCharm reports a missing
 `utils.iputils` or `utils.uptime` module, replace the project from the
 current archive rather than reusing an older extracted copy.
+
+To validate renewal discovery without changing any hostname:
+
+```sh
+DRY_RUN=true docker compose up --build
+```
+
+Dry-run results are written to `state.json` as `dry_run` and
+`would_renew`, and are exposed by `/health` and `/status.json`. Enabling
+dry-run bypasses a restored future schedule once so the validation runs
+immediately.
 
 ## Operational notes
 

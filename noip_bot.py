@@ -34,7 +34,7 @@ LOCAL_TIMEZONE = os.environ.get("TZ", "America/Costa_Rica")
 # APP_NAME = 'NOIP-BOT'
 APP_NAME = os.path.splitext(os.path.basename(__file__))[0]
 APP_DATE = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(__file__)))
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 
 # setting storage
 settings = Settings()
@@ -64,6 +64,7 @@ def updateHosts():
             2 if settings.debug else 0,
             code_reader=settings.codeReader,
             state_store=state_store,
+            dry_run=settings.dry_run,
         )
         noip.run()
     except Exception:
@@ -104,10 +105,19 @@ def updateHosts():
     gmd = GithubMarkdown()
 
     # inform which Domains got updated to the user
-    updatedHosts = gmd.linebreak(gmd.linebreak(
-        'The following hostnames have been updated: ' + ', '.join(noip.updatedHosts) + '.'
-        if noip.updatedHosts else gmd.bolditalics('No hostnames were updated during this update.')
-    ))
+    if noip.dry_run and noip.wouldUpdateHosts:
+        update_summary = (
+            'Dry run: the following hostnames would have been updated: '
+            + ', '.join(noip.wouldUpdateHosts) + '.'
+        )
+    elif noip.updatedHosts:
+        update_summary = (
+            'The following hostnames have been updated: '
+            + ', '.join(noip.updatedHosts) + '.'
+        )
+    else:
+        update_summary = gmd.bolditalics('No hostnames were updated during this update.')
+    updatedHosts = gmd.linebreak(gmd.linebreak(update_summary))
 
     # Create a table of the active hosts and when the need to be updated again
     hostTable = ''.join([
@@ -149,7 +159,7 @@ def mainApp(bind, port):
     state_store = StateStore()
     now = datetime.datetime.now(ZoneInfo(LOCAL_TIMEZONE))
     restored_check = future_check(state_store.state.get("next_check"), now)
-    if restored_check:
+    if restored_check and not settings.dry_run:
         settings.scheduler.add_job(
             updateHosts,
             "date",
@@ -162,6 +172,11 @@ def mainApp(bind, port):
             extra={'event': 'schedule_restored', 'next_check': restored_check.isoformat()},
         )
     else:
+        if settings.dry_run:
+            log.info(
+                'Dry run bypassing restored schedule',
+                extra={'event': 'dry_run_schedule_bypass', 'dry_run': True},
+            )
         updateHosts()
 
     # bind locally to a free port
@@ -173,6 +188,7 @@ def mainApp(bind, port):
 @click.version_option(version=VERSION, message=f'{APP_NAME} version \"{VERSION}\" {APP_DATE}')
 @click.option('--verbose', '-v', is_flag=True, default=False)
 @click.option('--test', '-t', is_flag=True, default=False)
+@click.option('--dry-run', envvar='DRY_RUN', is_flag=True, default=False)
 @click.option('--debug', '-d', envvar='DEBUG', is_flag=True, default=False)
 @click.option('--gmail_id', '-gid', envvar='GMAIL_ID', default='')
 @click.option('--gmail_token', '-gt', envvar='GMAIL_TOKEN', default='')
@@ -183,7 +199,7 @@ def mainApp(bind, port):
 @click.option('--noip_id', '-nid', envvar='NOIP_ID', default='')
 @click.option('--noip_pw', '-npw', envvar='NOIP_PASSWORD', default='')
 @click_config_file.configuration_option(config_file_name=os.path.dirname(os.path.realpath(__file__))+'/config')
-def main(verbose, test, debug,
+def main(verbose, test, dry_run, debug,
          gmail_id, gmail_token,
          noip_verification_email, noip_verification_email_token,
          bind_addr, port,
@@ -228,6 +244,11 @@ def main(verbose, test, debug,
 
     # other settings
     settings.test = test
+    settings.dry_run = bool(dry_run or test)
+    log.info(
+        'Dry-run mode configured',
+        extra={'event': 'dry_run_configured', 'dry_run': settings.dry_run},
+    )
     settings.verbose = verbose
 
     # save off the noip logon info

@@ -68,8 +68,12 @@ class Robot:
     LOGIN_URL = 'https://www.noip.com/login'
     HOST_URL = 'https://my.noip.com'
 
-    def __init__(self, username, password, debug, code_reader=None, state_store=None):
+    def __init__(
+        self, username, password, debug, code_reader=None, state_store=None,
+        dry_run=False
+    ):
         self.debug = debug
+        self.dry_run = bool(dry_run)
         self.username = username
         self.password = password
         self.code_reader = code_reader  # emailServer.VerificationCodeReader, optional
@@ -81,6 +85,7 @@ class Robot:
             raise
         self.next_renewal = 0
         self.updatedHosts = []
+        self.wouldUpdateHosts = []
         self.hosts = []
         self.host_expirations = {}  # {hostname: days_until_expiry}, all hosts with a visible countdown
 
@@ -390,6 +395,19 @@ class Robot:
             log.info('No hostnames need renewal', extra={'event': 'renewal_not_required'})
         for host_id, host_name in self.hosts:
             expires_in = exp_by_host.get(host_name)
+            if self.dry_run:
+                self.wouldUpdateHosts.append(host_name)
+                log.info(
+                    'Dry run would renew hostname',
+                    extra={
+                        'event': 'renewal_would_run',
+                        'host': host_name,
+                        'host_id': host_id,
+                        'expires_in_days': expires_in,
+                        'dry_run': True,
+                    },
+                )
+                continue
             before_update, after_update = self.update_host(host_id, host_name)
             self.updatedHosts.append(host_name)
             # Confirming resets the ~30-day free-host cycle.
@@ -401,14 +419,18 @@ class Robot:
 
         refreshed_inventory = self.get_host_inventory()
         self.state_store.record_inventory(refreshed_inventory)
+        self.state_store.record_would_renew(self.wouldUpdateHosts)
 
         self.host_expirations = exp_by_host
         self.next_renewal = min(exp_by_host.values()) if exp_by_host else 0
         return True
 
     def run(self):
-        self.state_store.record_run_started()
-        log.info('Renewal run started', extra={'event': 'run_started', 'debug': self.debug})
+        self.state_store.record_run_started(self.dry_run)
+        log.info(
+            'Renewal run started',
+            extra={'event': 'run_started', 'debug': self.debug, 'dry_run': self.dry_run},
+        )
         try:
             self.login()
             self.update_hosts()
@@ -421,7 +443,9 @@ class Robot:
             log.info(
                 'Renewal run succeeded',
                 extra={'event': 'run_succeeded', 'updated_hosts': self.updatedHosts,
-                       'next_renewal_days': self.next_renewal},
+                       'would_renew': self.wouldUpdateHosts,
+                       'next_renewal_days': self.next_renewal,
+                       'dry_run': self.dry_run},
             )
         except Exception as exc:
             self.state_store.record_failure(exc)

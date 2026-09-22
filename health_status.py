@@ -40,5 +40,7 @@ def evaluate_health(state, now=None, overdue_grace_seconds=3600):
         "last_error": last_error,
         "next_check": state.get("next_check"),
         "next_renewal_days": state.get("next_renewal_days"),
+        "dry_run": bool(state.get("dry_run", False)),
+        "would_renew": state.get("would_renew", []),
         "host_count": len(state.get("hosts", {})),
     }

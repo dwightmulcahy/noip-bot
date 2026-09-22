@@ -23,7 +23,8 @@ ENV CHROME_BIN=/usr/bin/chromium \
     LOG_LEVEL=INFO \
     HEADLESS=true \
     CHROMEDRIVER_BIN=/usr/bin/chromedriver \
-    CHROMEDRIVER_LOG=/app/data/chromedriver.log
+    CHROMEDRIVER_LOG=/app/data/chromedriver.log \
+    DRY_RUN=false
 
 WORKDIR /app
 

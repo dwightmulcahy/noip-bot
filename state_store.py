@@ -12,11 +12,13 @@ def utc_now():
 
 class StateStore:
     DEFAULT_STATE = {
-        "schema_version": 1,
+        "schema_version": 2,
         "last_run": None,
         "last_success": None,
         "last_error": None,
         "next_check": None,
+        "dry_run": False,
+        "would_renew": [],
         "hosts": {},
     }
 
@@ -36,6 +38,7 @@ class StateStore:
             raise RuntimeError(f"Unable to load renewal state {self.path}: {exc}") from exc
         state = deepcopy(self.DEFAULT_STATE)
         state.update(loaded)
+        state["schema_version"] = self.DEFAULT_STATE["schema_version"]
         state["hosts"] = loaded.get("hosts", {})
         return state
 
@@ -60,9 +63,15 @@ class StateStore:
                     pass
                 raise
 
-    def record_run_started(self):
+    def record_run_started(self, dry_run=False):
         self.state["last_run"] = utc_now()
         self.state["last_error"] = None
+        self.state["dry_run"] = bool(dry_run)
+        self.state["would_renew"] = []
+        self.save()
+
+    def record_would_renew(self, hostnames):
+        self.state["would_renew"] = list(hostnames)
         self.save()
 
     def record_host(self, hostname, old_data_update, new_data_update, expires_in_days=None):
