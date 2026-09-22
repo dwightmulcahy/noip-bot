@@ -19,6 +19,7 @@ from settings import Settings
 from utils import findFreePort, getMyIpAddr
 import click_config_file   # https://github.com/phha/click_config_file
 from logging_config import configure_logging
+from notifications import send_notification
 from state_store import StateStore
 from scheduling import cap_future_check, days_until_check, future_check
 from version import get_version
@@ -47,15 +48,22 @@ settings = Settings()
 emailBody = ''
 
 def sendEmail(sendTo, subject, body):
-    if not settings.gmailServer:
-        log.error(f'Cannot send email (subject: `{subject}`) — Gmail server is not configured '
-                  f'(GMAIL_TOKEN missing or not picked up from config/env).')
-        return
-    wasSent = settings.gmailServer.sendEmail(sendTo, subject, str(body))
-    if wasSent:
-        log.info(f'Email was sent to {sendTo} with title `{subject}`')
-    else:
-        log.error(f'Email was not sent to {sendTo} with title `{subject}`')
+    try:
+        notification_state = StateStore()
+    except Exception:
+        notification_state = None
+        log.exception(
+            'Unable to load notification state; attempting delivery without persistence',
+            extra={'event': 'notification_state_unavailable'},
+        )
+    return send_notification(
+        server=settings.gmailServer,
+        send_to=sendTo,
+        subject=subject,
+        body=body,
+        state_store=notification_state,
+        logger=log,
+    )
 
 
 def updateHosts():

@@ -119,6 +119,10 @@ immediately.
 - The exact timezone-aware scheduler date is persisted for both normal checks
   and next-day failure retries.
 - The process schedules a next-day retry after a failed No-IP run.
+- Notification delivery failures are isolated from renewal and scheduling. They
+  are recorded under `notifications` in `state.json` and exposed as
+  `notification_status` by `/health` and `/status.json`; they do not make the
+  renewal health check fail. An unconfigured sender reports `disabled`.
 - Selenium selectors depend on No-IP's website and may need maintenance when
   the site changes.
 - Docker runs Chromium in headless mode with a persistent verbose ChromeDriver

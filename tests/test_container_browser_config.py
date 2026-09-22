@@ -18,8 +18,8 @@ class ContainerBrowserConfigTests(unittest.TestCase):
         self.assertIn("'--remote-debugging-pipe'", source)
 
     def test_error_email_converts_exception_to_text(self):
-        source = (ROOT / "noip_bot.py").read_text(encoding="utf-8")
-        self.assertIn("sendEmail(sendTo, subject, str(body))", source)
+        source = (ROOT / "notifications.py").read_text(encoding="utf-8")
+        self.assertIn("sendEmail(send_to, subject, str(body))", source)
 
 
 if __name__ == "__main__":

@@ -72,6 +72,38 @@ class HealthStatusTests(unittest.TestCase):
         result = evaluate_health(state, self.now)
         self.assertFalse(result["healthy"])
 
+    def test_notification_failure_is_degraded_without_poisoning_health(self):
+        state = self.healthy_state()
+        state["notifications"] = {
+            "enabled": True,
+            "last_success": None,
+            "last_error": {
+                "timestamp": self.now.isoformat(),
+                "message": "SMTP unavailable",
+            },
+        }
+        result = evaluate_health(state, self.now)
+        self.assertTrue(result["healthy"])
+        self.assertEqual(result["notification_status"], "degraded")
+
+    def test_notification_recovery_and_disabled_status(self):
+        state = self.healthy_state()
+        state["notifications"] = {"enabled": False}
+        self.assertEqual(
+            evaluate_health(state, self.now)["notification_status"], "disabled"
+        )
+        state["notifications"] = {
+            "enabled": True,
+            "last_success": self.now.isoformat(),
+            "last_error": {
+                "timestamp": (self.now - timedelta(minutes=1)).isoformat(),
+                "message": "old failure",
+            },
+        }
+        self.assertEqual(
+            evaluate_health(state, self.now)["notification_status"], "healthy"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

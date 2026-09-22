@@ -32,6 +32,25 @@ def evaluate_health(state, now=None, overdue_grace_seconds=3600):
         reasons.append("the scheduled renewal check is overdue")
 
     hosts = state.get("hosts", {})
+    notifications = state.get("notifications", {})
+    if not notifications.get("enabled", False):
+        notification_status = "disabled"
+    else:
+        notification_success = _parse_timestamp(notifications.get("last_success"))
+        notification_error = notifications.get("last_error")
+        notification_error_time = _parse_timestamp(
+            notification_error.get("timestamp") if notification_error else None
+        )
+        notification_status = (
+            "degraded"
+            if notification_error
+            and (
+                notification_success is None
+                or notification_error_time is None
+                or notification_error_time > notification_success
+            )
+            else "healthy"
+        )
     active_hosts = sum(1 for host in hosts.values() if host.get("active", True))
     return {
         "status": "unhealthy" if reasons else "healthy",
@@ -44,6 +63,8 @@ def evaluate_health(state, now=None, overdue_grace_seconds=3600):
         "next_renewal_days": state.get("next_renewal_days"),
         "dry_run": bool(state.get("dry_run", False)),
         "would_renew": state.get("would_renew", []),
+        "notification_status": notification_status,
+        "notifications": notifications,
         "host_count": active_hosts,
         "total_host_count": len(hosts),
     }

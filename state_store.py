@@ -12,13 +12,19 @@ def utc_now():
 
 class StateStore:
     DEFAULT_STATE = {
-        "schema_version": 2,
+        "schema_version": 3,
         "last_run": None,
         "last_success": None,
         "last_error": None,
         "next_check": None,
         "dry_run": False,
         "would_renew": [],
+        "notifications": {
+            "enabled": False,
+            "last_attempt": None,
+            "last_success": None,
+            "last_error": None,
+        },
         "hosts": {},
     }
 
@@ -40,6 +46,9 @@ class StateStore:
         state.update(loaded)
         state["schema_version"] = self.DEFAULT_STATE["schema_version"]
         state["hosts"] = loaded.get("hosts", {})
+        notifications = deepcopy(self.DEFAULT_STATE["notifications"])
+        notifications.update(loaded.get("notifications", {}))
+        state["notifications"] = notifications
         return state
 
     def save(self):
@@ -118,4 +127,33 @@ class StateStore:
             "message": str(error),
             "type": type(error).__name__,
         }
+        self.save()
+
+    def set_notifications_enabled(self, enabled):
+        self.state["notifications"]["enabled"] = bool(enabled)
+        self.save()
+
+    def record_notification_success(self):
+        timestamp = utc_now()
+        notifications = self.state["notifications"]
+        notifications.update({
+            "enabled": True,
+            "last_attempt": timestamp,
+            "last_success": timestamp,
+            "last_error": None,
+        })
+        self.save()
+
+    def record_notification_failure(self, error):
+        timestamp = utc_now()
+        notifications = self.state["notifications"]
+        notifications.update({
+            "enabled": True,
+            "last_attempt": timestamp,
+            "last_error": {
+                "timestamp": timestamp,
+                "message": str(error),
+                "type": type(error).__name__,
+            },
+        })
         self.save()
