@@ -28,6 +28,7 @@ ENV CHROME_BIN=/usr/bin/chromium \
     CHROMEDRIVER_BIN=/usr/bin/chromedriver \
     CHROMEDRIVER_LOG=/app/data/chromedriver.log \
     DRY_RUN=false \
+    SKIP_INITIAL_RUN=false \
     MAX_CHECK_INTERVAL_DAYS=5 \
     NOTIFICATION_TIMEOUT_SECONDS=30
 

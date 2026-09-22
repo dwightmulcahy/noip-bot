@@ -48,6 +48,12 @@ class DryRunTests(unittest.TestCase):
         source = source_path.read_text(encoding="utf-8")
         self.assertIn("if restored_check and not settings.dry_run:", source)
 
+    def test_smoke_mode_skips_initial_renewal(self):
+        source_path = __import__("pathlib").Path(__file__).parents[1] / "noip_bot.py"
+        source = source_path.read_text(encoding="utf-8")
+        self.assertIn("envvar='SKIP_INITIAL_RUN'", source)
+        self.assertIn("if settings.skip_initial_run:", source)
+
 
 if __name__ == "__main__":
     unittest.main()

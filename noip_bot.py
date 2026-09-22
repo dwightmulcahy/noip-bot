@@ -194,7 +194,12 @@ def mainApp(bind, port):
                 'max_check_interval_days': MAX_CHECK_INTERVAL_DAYS,
             },
         )
-    if restored_check and not settings.dry_run:
+    if settings.skip_initial_run:
+        log.info(
+            'Initial renewal skipped by configuration',
+            extra={'event': 'initial_renewal_skipped'},
+        )
+    elif restored_check and not settings.dry_run:
         settings.scheduler.add_job(
             updateHosts,
             "date",
@@ -224,6 +229,7 @@ def mainApp(bind, port):
 @click.option('--verbose', '-v', is_flag=True, default=False)
 @click.option('--test', '-t', is_flag=True, default=False)
 @click.option('--dry-run', envvar='DRY_RUN', is_flag=True, default=False)
+@click.option('--skip-initial-run', envvar='SKIP_INITIAL_RUN', is_flag=True, default=False)
 @click.option('--debug', '-d', envvar='DEBUG', is_flag=True, default=False)
 @click.option('--gmail_id', '-gid', envvar='GMAIL_ID', default='')
 @click.option('--gmail_token', '-gt', envvar='GMAIL_TOKEN', default='')
@@ -234,7 +240,7 @@ def mainApp(bind, port):
 @click.option('--noip_id', '-nid', envvar='NOIP_ID', default='')
 @click.option('--noip_pw', '-npw', envvar='NOIP_PASSWORD', default='')
 @click_config_file.configuration_option(config_file_name=os.path.dirname(os.path.realpath(__file__))+'/config')
-def main(verbose, test, dry_run, debug,
+def main(verbose, test, dry_run, skip_initial_run, debug,
          gmail_id, gmail_token,
          noip_verification_email, noip_verification_email_token,
          bind_addr, port,
@@ -280,6 +286,7 @@ def main(verbose, test, dry_run, debug,
     # other settings
     settings.test = test
     settings.dry_run = bool(dry_run or test)
+    settings.skip_initial_run = bool(skip_initial_run)
     log.info(
         'Dry-run mode configured',
         extra={'event': 'dry_run_configured', 'dry_run': settings.dry_run},

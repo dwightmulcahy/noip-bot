@@ -1,4 +1,5 @@
 import pathlib
+import re
 import unittest
 
 
@@ -11,7 +12,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("push:", workflow)
         self.assertIn("pull_request:", workflow)
         self.assertIn("python -m unittest discover -s tests -v", workflow)
-        self.assertIn("docker/build-push-action@v6", workflow)
+        self.assertRegex(workflow, r"docker/build-push-action@[0-9a-f]{40}")
+        self.assertIn("scripts/container_smoke_test.sh", workflow)
+        self.assertIn("aquasecurity/trivy-action@", workflow)
+        self.assertIn('severity: CRITICAL,HIGH', workflow)
 
     def test_release_publishes_multi_arch_docker_hub_image(self):
         workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()
@@ -24,7 +28,23 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
         self.assertIn("type=semver,pattern={{version}}", workflow)
         self.assertIn("type=raw,value=latest", workflow)
-        self.assertIn("provenance: false", workflow)
+        self.assertIn("needs: preflight", workflow)
+        self.assertIn("provenance: mode=max", workflow)
+        self.assertIn("sbom: true", workflow)
+
+    def test_all_external_actions_are_pinned_to_full_shas(self):
+        for path in (ROOT / ".github" / "workflows").glob("*.yml"):
+            workflow = path.read_text()
+            references = re.findall(r"uses:\s+([^\s#]+)", workflow)
+            for reference in references:
+                with self.subTest(workflow=path.name, reference=reference):
+                    self.assertRegex(reference, r"^[^@]+@[0-9a-f]{40}$")
+
+    def test_dependabot_covers_supported_ecosystems(self):
+        config = (ROOT / ".github" / "dependabot.yml").read_text()
+        self.assertIn("package-ecosystem: pip", config)
+        self.assertIn("package-ecosystem: docker", config)
+        self.assertIn("package-ecosystem: github-actions", config)
 
 
 if __name__ == "__main__":

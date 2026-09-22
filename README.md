@@ -68,6 +68,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `CHROMEDRIVER_LOG` | Persistent verbose driver log | `/app/data/chromedriver.log` |
 | `DEBUG` | Enable debug behavior | `False` |
 | `DRY_RUN` | Discover renewable hosts without clicking Renew | `false` |
+| `SKIP_INITIAL_RUN` | Start services without an immediate No-IP check | `false` |
 | `MAX_CHECK_INTERVAL_DAYS` | Hard cap between No-IP checks | `5` |
 
 Never commit `.env`, Gmail tokens, No-IP credentials, or captured screenshots.
@@ -105,6 +106,10 @@ Dry-run results are written to `state.json` as `dry_run` and
 dry-run bypasses a restored future schedule once so the validation runs
 immediately.
 
+`SKIP_INITIAL_RUN=true` is intended for container smoke tests and maintenance.
+It starts the scheduler and status server without contacting No-IP. Until a
+real renewal check succeeds, `/health` correctly remains unhealthy.
+
 ## Operational notes
 
 - The supported runtime is Docker or Python 3.12+; obsolete Heroku and Python
@@ -139,7 +144,9 @@ immediately.
 ## Continuous integration and releases
 
 Every push and pull request runs the Python test suite, compiles all Python
-sources, verifies the application imports, and builds the Docker image.
+sources, verifies the application imports, builds and boots the Docker image,
+checks `/status.json` and `/health`, and scans the image with Trivy. Fixable
+high or critical vulnerabilities fail verification.
 
 Publishing a GitHub Release builds and pushes a multi-architecture
 `linux/amd64` and `linux/arm64` image to:
@@ -147,6 +154,9 @@ Publishing a GitHub Release builds and pushes a multi-architecture
 ```text
 dwightmulcahy/noip-bot
 ```
+
+Release images include BuildKit provenance and SPDX SBOM attestations.
+Dependabot maintains Python, Docker, and SHA-pinned GitHub Actions dependencies.
 
 The application version is injected from the GitHub Release tag during the
 Docker build. Tags such as `0.2.3` and `v0.2.3` both make the application
