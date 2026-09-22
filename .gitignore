@@ -1,0 +1,28 @@
+# Secrets and local configuration
+.env
+config
+
+# Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+build/
+dist/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.iml
+
+# Runtime output
+data/
+logs/
+*.log
+*.png
+verification_code_page.html

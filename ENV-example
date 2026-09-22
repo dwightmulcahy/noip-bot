@@ -1,0 +1,25 @@
+# ===============================================
+# Put secrets here, do not hard code your secrets
+# ===============================================
+
+# to debug or not to debug, that is this setting
+DEBUG=True
+
+# webpage bindings
+BIND_ADDR=127.0.0.1
+PORT=80
+
+# Gmail account used to SEND notification emails from the bot
+GMAIL_ID="your.gmail.addr.here@gmail.com"
+GMAIL_TOKEN="**your-token-here**"
+
+# Gmail account that RECEIVES noip.com's 2FA verification-code emails —
+# this is the inbox tied to your noip.com account, which may be a
+# different Gmail account than the one the bot sends notifications from.
+NOIP_VERIFICATION_EMAIL="your-noip-account-email@gmail.com"
+NOIP_VERIFICATION_EMAIL_TOKEN="**your-token-here**"
+
+# noip.com logon info
+NOIP_ID="noip-userid"
+NOIP_PASSWORD="noip-password"
+

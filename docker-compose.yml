@@ -1,0 +1,27 @@
+services:
+  noip-bot:
+    build: .
+    container_name: noip-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BIND_ADDR: 0.0.0.0
+      PORT: 8080
+      TZ: ${TZ:-America/Costa_Rica}
+      SCREENSHOT_DIR: /app/data/screenshots
+      STATE_FILE: /app/data/state.json
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HEADLESS: ${HEADLESS:-true}
+      CHROMEDRIVER_BIN: /usr/bin/chromedriver
+      CHROMEDRIVER_LOG: /app/data/chromedriver.log
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

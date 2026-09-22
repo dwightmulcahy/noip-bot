@@ -1,0 +1,98 @@
+import json
+import os
+import tempfile
+import threading
+from copy import deepcopy
+from datetime import datetime, timezone
+
+
+def utc_now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+class StateStore:
+    DEFAULT_STATE = {
+        "schema_version": 1,
+        "last_run": None,
+        "last_success": None,
+        "last_error": None,
+        "next_check": None,
+        "hosts": {},
+    }
+
+    def __init__(self, path=None):
+        default_path = os.path.join(os.getcwd(), "data", "state.json")
+        self.path = path or os.environ.get("STATE_FILE", default_path)
+        self._lock = threading.Lock()
+        self.state = self._load()
+
+    def _load(self):
+        try:
+            with open(self.path, "r", encoding="utf-8") as state_file:
+                loaded = json.load(state_file)
+        except FileNotFoundError:
+            return deepcopy(self.DEFAULT_STATE)
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f"Unable to load renewal state {self.path}: {exc}") from exc
+        state = deepcopy(self.DEFAULT_STATE)
+        state.update(loaded)
+        state["hosts"] = loaded.get("hosts", {})
+        return state
+
+    def save(self):
+        directory = os.path.dirname(os.path.abspath(self.path))
+        os.makedirs(directory, exist_ok=True)
+        with self._lock:
+            descriptor, temporary_path = tempfile.mkstemp(
+                prefix=".state-", suffix=".json", dir=directory
+            )
+            try:
+                with os.fdopen(descriptor, "w", encoding="utf-8") as state_file:
+                    json.dump(self.state, state_file, indent=2, sort_keys=True)
+                    state_file.write("\n")
+                    state_file.flush()
+                    os.fsync(state_file.fileno())
+                os.replace(temporary_path, self.path)
+            except Exception:
+                try:
+                    os.unlink(temporary_path)
+                except FileNotFoundError:
+                    pass
+                raise
+
+    def record_run_started(self):
+        self.state["last_run"] = utc_now()
+        self.state["last_error"] = None
+        self.save()
+
+    def record_host(self, hostname, old_data_update, new_data_update, expires_in_days=None):
+        self.state["hosts"][hostname] = {
+            "last_verified_renewal": utc_now(),
+            "previous_data_update": old_data_update,
+            "data_update": new_data_update,
+            "expires_in_days": expires_in_days,
+        }
+        self.save()
+
+    def record_success(self, next_check=None, host_expirations=None, next_renewal_days=None):
+        self.state["last_success"] = utc_now()
+        self.state["last_error"] = None
+        self.state["next_check"] = next_check
+        self.state["next_renewal_days"] = next_renewal_days
+        for hostname, expires_in_days in (host_expirations or {}).items():
+            host = self.state["hosts"].setdefault(hostname, {})
+            host["expires_in_days"] = expires_in_days
+            host["last_observed"] = utc_now()
+        self.save()
+
+    def record_next_check(self, next_check):
+        self.state["next_check"] = next_check
+        self.save()
+
+    def record_failure(self, error):
+        self.state["last_error"] = {
+            "timestamp": utc_now(),
+            "message": str(error),
+            "type": type(error).__name__,
+        }
+        self.save()

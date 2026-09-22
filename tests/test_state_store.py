@@ -1,0 +1,52 @@
+import json
+import os
+import tempfile
+import unittest
+
+from state_store import StateStore
+
+
+class StateStoreTests(unittest.TestCase):
+    def test_state_survives_reload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state.json")
+            store = StateStore(path)
+            store.record_run_started()
+            store.record_host("example.ddns.net", "old", "new", 30)
+            store.record_success(
+                "2026-10-20T00:00:00+00:00",
+                {"example.ddns.net": 30},
+                30,
+            )
+
+            reloaded = StateStore(path).state
+            self.assertEqual(
+                reloaded["hosts"]["example.ddns.net"]["data_update"], "new"
+            )
+            self.assertEqual(reloaded["next_renewal_days"], 30)
+            self.assertIsNotNone(reloaded["last_success"])
+            self.assertIsNone(reloaded["last_error"])
+
+    def test_failure_is_persisted_as_structured_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state.json")
+            store = StateStore(path)
+            store.record_failure(RuntimeError("navigation failed"))
+
+            with open(path, encoding="utf-8") as state_file:
+                persisted = json.load(state_file)
+            self.assertEqual(persisted["last_error"]["type"], "RuntimeError")
+            self.assertEqual(persisted["last_error"]["message"], "navigation failed")
+
+    def test_scheduled_check_survives_reload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state.json")
+            store = StateStore(path)
+            scheduled = "2026-09-26T11:43:00-06:00"
+            store.record_next_check(scheduled)
+
+            self.assertEqual(StateStore(path).state["next_check"], scheduled)
+
+
+if __name__ == "__main__":
+    unittest.main()
