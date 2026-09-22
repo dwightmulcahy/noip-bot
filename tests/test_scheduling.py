@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from scheduling import days_until_check, future_check
+from scheduling import cap_future_check, days_until_check, future_check
 
 
 class SchedulingTests(unittest.TestCase):
@@ -9,6 +9,7 @@ class SchedulingTests(unittest.TestCase):
         self.assertEqual(days_until_check(2, 4), 1)
         self.assertEqual(days_until_check(6, 4), 1)
         self.assertEqual(days_until_check(10, 4), 4)
+        self.assertEqual(days_until_check(30, 4), 5)
 
     def test_fallback_is_used_without_expiration(self):
         self.assertEqual(days_until_check(0, 3), 3)
@@ -31,6 +32,28 @@ class SchedulingTests(unittest.TestCase):
     def test_invalid_fallback_is_clamped_to_one_day(self):
         self.assertEqual(days_until_check(0, 0), 1)
         self.assertEqual(days_until_check(None, -4), 1)
+
+    def test_fallback_and_estimate_respect_custom_cap(self):
+        self.assertEqual(days_until_check(30, 9, max_interval_days=3), 3)
+        self.assertEqual(days_until_check(0, 9, max_interval_days=3), 3)
+
+    def test_invalid_cap_is_clamped_to_one_day(self):
+        self.assertEqual(days_until_check(30, 4, max_interval_days=0), 1)
+        self.assertEqual(days_until_check(30, 4, max_interval_days=-5), 1)
+
+    def test_restored_schedule_is_shortened_to_safety_cap(self):
+        now = datetime(2026, 9, 22, tzinfo=timezone.utc)
+        scheduled = now + timedelta(days=20)
+        self.assertEqual(
+            cap_future_check(scheduled, now, max_interval_days=5),
+            now + timedelta(days=5),
+        )
+
+    def test_restored_schedule_inside_cap_is_unchanged(self):
+        now = datetime(2026, 9, 22, tzinfo=timezone.utc)
+        scheduled = now + timedelta(days=2)
+        self.assertEqual(cap_future_check(scheduled, now, 5), scheduled)
+        self.assertIsNone(cap_future_check(None, now, 5))
 
 
 if __name__ == "__main__":

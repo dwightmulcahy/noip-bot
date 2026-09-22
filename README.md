@@ -67,6 +67,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `CHROMEDRIVER_LOG` | Persistent verbose driver log | `/app/data/chromedriver.log` |
 | `DEBUG` | Enable debug behavior | `False` |
 | `DRY_RUN` | Discover renewable hosts without clicking Renew | `false` |
+| `MAX_CHECK_INTERVAL_DAYS` | Hard cap between No-IP checks | `5` |
 
 Never commit `.env`, Gmail tokens, No-IP credentials, or captured screenshots.
 
@@ -112,6 +113,8 @@ immediately.
 - `expires_in_days` is stored only when No-IP actually displays it. When it
   is absent, scheduling uses clearly labeled `estimated_expiration` and
   `estimated_days_until_expiry` fields derived from `data-update`.
+- Derived timing can never postpone a real No-IP check beyond
+  `MAX_CHECK_INTERVAL_DAYS`; the default safety cap is five days.
 - State is written atomically after each verified hostname and after every run.
 - The exact timezone-aware scheduler date is persisted for both normal checks
   and next-day failure retries.

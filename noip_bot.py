@@ -20,7 +20,7 @@ from utils import findFreePort, getMyIpAddr
 import click_config_file   # https://github.com/phha/click_config_file
 from logging_config import configure_logging
 from state_store import StateStore
-from scheduling import days_until_check, future_check
+from scheduling import cap_future_check, days_until_check, future_check
 from version import get_version
 
 # formatting for log messages
@@ -29,6 +29,9 @@ configure_logging()
 log = logging.getLogger(__name__)
 
 LOCAL_TIMEZONE = os.environ.get("TZ", "America/Costa_Rica")
+MAX_CHECK_INTERVAL_DAYS = max(
+    1, int(os.environ.get("MAX_CHECK_INTERVAL_DAYS", "5"))
+)
 # LOCAL_TIMEZONE = get_localzone().zone
 
 # Application info
@@ -82,10 +85,22 @@ def updateHosts():
         log.info(f'Updated host "{hostName}" for 30 more days')
 
     # get the next update and schedule it for random time 7 days before the required update
-    check_delay = days_until_check(noip.next_renewal, 1 + randrange(5))
+    check_delay = days_until_check(
+        noip.next_renewal,
+        1 + randrange(5),
+        MAX_CHECK_INTERVAL_DAYS,
+    )
     nextCheckDate, nextCheckHour, nextCheckMin = \
         date.today() + timedelta(days=check_delay), 9+randrange(8), randrange(59)
-    log.info(f'Next hosts update scheduled on {calendar.month_abbr[nextCheckDate.month]} {nextCheckDate.day} at {nextCheckHour:02d}:{nextCheckMin:02d}.')
+    log.info(
+        f'Next hosts update scheduled on {calendar.month_abbr[nextCheckDate.month]} '
+        f'{nextCheckDate.day} at {nextCheckHour:02d}:{nextCheckMin:02d}.',
+        extra={
+            'event': 'next_check_scheduled',
+            'check_delay_days': check_delay,
+            'max_check_interval_days': MAX_CHECK_INTERVAL_DAYS,
+        },
+    )
     next_check = datetime.datetime(
         year=nextCheckDate.year,
         month=nextCheckDate.month,
@@ -160,6 +175,18 @@ def mainApp(bind, port):
     state_store = StateStore()
     now = datetime.datetime.now(ZoneInfo(LOCAL_TIMEZONE))
     restored_check = future_check(state_store.state.get("next_check"), now)
+    capped_check = cap_future_check(restored_check, now, MAX_CHECK_INTERVAL_DAYS)
+    if capped_check and capped_check != restored_check:
+        restored_check = capped_check
+        state_store.record_next_check(restored_check.isoformat())
+        log.warning(
+            'Persisted schedule exceeded safety cap and was shortened',
+            extra={
+                'event': 'restored_schedule_capped',
+                'next_check': restored_check.isoformat(),
+                'max_check_interval_days': MAX_CHECK_INTERVAL_DAYS,
+            },
+        )
     if restored_check and not settings.dry_run:
         settings.scheduler.add_job(
             updateHosts,

@@ -19,6 +19,7 @@ services:
       CHROMEDRIVER_BIN: /usr/bin/chromedriver
       CHROMEDRIVER_LOG: /app/data/chromedriver.log
       DRY_RUN: ${DRY_RUN:-false}
+      MAX_CHECK_INTERVAL_DAYS: ${MAX_CHECK_INTERVAL_DAYS:-5}
     ports:
       - "8080:8080"
     volumes:
