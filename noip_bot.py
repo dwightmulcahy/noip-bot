@@ -1,7 +1,6 @@
 import os
 import time
 import calendar
-import sys
 import datetime
 from datetime import timedelta, date
 from random import randrange
@@ -13,7 +12,7 @@ from noip_renew import Robot
 import click as click
 from apscheduler.schedulers.background import BackgroundScheduler  # https://github.com/agronholm/apscheduler
 from emailServer import MarkdownEmailServer, VerificationCodeReader
-from flask_template import startWebServer, setPageMsg
+from status_server import startWebServer, setPageMsg
 from githubMarkdown import GithubMarkdown
 from settings import Settings
 from utils import findFreePort, getMyIpAddr

@@ -107,6 +107,8 @@ immediately.
 
 ## Operational notes
 
+- The supported runtime is Docker or Python 3.12+; obsolete Heroku and Python
+  3.6 compatibility scaffolding has been removed.
 - A navigation or renewal failure now fails the run instead of being treated as
   “nothing to renew.”
 - A hostname is only recorded as renewed after its confirmation control

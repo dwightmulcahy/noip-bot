@@ -7,7 +7,6 @@ class InternalImportTests(unittest.TestCase):
         for module_name in (
             "githubMarkdown",
             "logging_config",
-            "simpleTable",
             "state_store",
             "utils",
         ):
