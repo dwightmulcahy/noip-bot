@@ -123,6 +123,42 @@ immediately.
 - Automating a third-party site can be affected by its terms and anti-bot
   controls. You are responsible for using this project appropriately.
 
+## Continuous integration and releases
+
+Every push and pull request runs the Python test suite, compiles all Python
+sources, verifies the application imports, and builds the Docker image.
+
+Publishing a GitHub Release builds and pushes a multi-architecture
+`linux/amd64` and `linux/arm64` image to:
+
+```text
+dwightmulcahy/noip-bot
+```
+
+Configure these GitHub repository secrets before publishing a release:
+
+| Secret | Value |
+| --- | --- |
+| `DOCKERHUB_USERNAME` | Docker Hub username, normally `dwightmulcahy` |
+| `DOCKERHUB_TOKEN` | Docker Hub access token with Read & Write permission |
+
+For a release tagged `v0.4.0`, the workflow publishes:
+
+```text
+dwightmulcahy/noip-bot:0.4.0
+dwightmulcahy/noip-bot:0.4
+dwightmulcahy/noip-bot:0
+dwightmulcahy/noip-bot:latest
+```
+
+Create releases from semantic-version tags:
+
+```sh
+git tag -a v0.4.0 -m "No-IP Bot v0.4.0"
+git push origin v0.4.0
+gh release create v0.4.0 --generate-notes
+```
+
 ## License and attribution
 
 Licensed under Apache License 2.0. This project was originally derived from
