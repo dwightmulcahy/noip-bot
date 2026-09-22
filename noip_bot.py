@@ -20,6 +20,7 @@ from utils import findFreePort, getMyIpAddr
 import click_config_file   # https://github.com/phha/click_config_file
 from logging_config import configure_logging
 from state_store import StateStore
+from scheduling import days_until_check, future_check
 
 # formatting for log messages
 import logging
@@ -33,7 +34,7 @@ LOCAL_TIMEZONE = os.environ.get("TZ", "America/Costa_Rica")
 # APP_NAME = 'NOIP-BOT'
 APP_NAME = os.path.splitext(os.path.basename(__file__))[0]
 APP_DATE = time.strftime('%Y-%m-%d', time.localtime(os.path.getmtime(__file__)))
-VERSION = '0.1.3'
+VERSION = '0.2.0'
 
 # setting storage
 settings = Settings()
@@ -79,8 +80,9 @@ def updateHosts():
         log.info(f'Updated host "{hostName}" for 30 more days')
 
     # get the next update and schedule it for random time 7 days before the required update
+    check_delay = days_until_check(noip.next_renewal, 1 + randrange(5))
     nextCheckDate, nextCheckHour, nextCheckMin = \
-        date.today() + timedelta(days=(1+randrange(5) if noip.next_renewal == 0 else noip.next_renewal - 6)), 9+randrange(8), randrange(59)
+        date.today() + timedelta(days=check_delay), 9+randrange(8), randrange(59)
     log.info(f'Next hosts update scheduled on {calendar.month_abbr[nextCheckDate.month]} {nextCheckDate.day} at {nextCheckHour:02d}:{nextCheckMin:02d}.')
     next_check = datetime.datetime(
         year=nextCheckDate.year,
@@ -144,8 +146,23 @@ def mainApp(bind, port):
         body=GithubMarkdown().header('NOIP-Bot started. Any updates and errors will be sent via email.', level=3),
     )
 
-    # start the initial scheduled threads for all domains
-    updateHosts()
+    state_store = StateStore()
+    now = datetime.datetime.now(ZoneInfo(LOCAL_TIMEZONE))
+    restored_check = future_check(state_store.state.get("next_check"), now)
+    if restored_check:
+        settings.scheduler.add_job(
+            updateHosts,
+            "date",
+            run_date=restored_check,
+            id='Update Hosts',
+            replace_existing=True,
+        )
+        log.info(
+            'Restored next hosts update from persistent state',
+            extra={'event': 'schedule_restored', 'next_check': restored_check.isoformat()},
+        )
+    else:
+        updateHosts()
 
     # bind locally to a free port
     log.info(f'Bind Address: {bind} acceptable {getMyIpAddr()}:{port}')

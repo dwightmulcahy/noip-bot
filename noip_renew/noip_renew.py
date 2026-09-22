@@ -339,11 +339,51 @@ class Robot:
                 result[f'{name}.{zone}'] = int(match.group(0))
         return result
 
+    def get_host_inventory(self):
+        inventory = {}
+        renewable_host_ids = {
+            self._extract_host_id(button)
+            for button in self.browser.find_elements(
+                By.CSS_SELECTOR, "button[hx-get*='/ajax/host/']"
+            )
+        }
+        for row in self.browser.find_elements(By.CSS_SELECTOR, 'div.zone-record[data-label]'):
+            name = row.get_attribute('data-name')
+            zone = row.get_attribute('data-zone')
+            if not name or not zone:
+                continue
+            hostname = f'{name}.{zone}'
+            label = row.get_attribute('data-label') or ''
+            host_id_match = re.search(r'host=(\d+)', label)
+            expiration = None
+            popovers = row.find_elements(
+                By.XPATH, ".//span[contains(@class,'popover-info')][contains(@title,'Expires in')]"
+            )
+            if popovers:
+                expiration_match = re.search(r'\d+', popovers[0].get_attribute('title') or '')
+                if expiration_match:
+                    expiration = int(expiration_match.group(0))
+            inventory[hostname] = {
+                'host_id': host_id_match.group(1) if host_id_match else None,
+                'data_update': row.get_attribute('data-update'),
+                'expires_in_days': expiration,
+                'renewal_available': (
+                    bool(host_id_match) and host_id_match.group(1) in renewable_host_ids
+                ),
+            }
+        return inventory
+
     def update_hosts(self):
         self.open_hosts_page()
         time.sleep(1)
 
-        exp_by_host = self.get_expiration_days_by_host()
+        inventory = self.get_host_inventory()
+        self.state_store.record_inventory(inventory)
+        exp_by_host = {
+            hostname: details['expires_in_days']
+            for hostname, details in inventory.items()
+            if details['expires_in_days'] is not None
+        }
 
         self.hosts = self.get_hosts()
         if not self.hosts:
@@ -358,6 +398,9 @@ class Robot:
                 host_name, before_update, after_update, exp_by_host[host_name]
             )
         self.browser.save_screenshot(screenshot_path('results.png'))
+
+        refreshed_inventory = self.get_host_inventory()
+        self.state_store.record_inventory(refreshed_inventory)
 
         self.host_expirations = exp_by_host
         self.next_renewal = min(exp_by_host.values()) if exp_by_host else 0

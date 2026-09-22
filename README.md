@@ -14,9 +14,12 @@ optional Gmail notifications, and exposes a small status page.
 - Retries a failed run the following day
 - Stores diagnostic screenshots in a configurable persistent directory
 - Persists verified renewal state atomically across restarts
+- Restores a still-future scheduled check instead of rerunning immediately
+- Records every discovered hostname, including hosts not yet renewable
 - Verifies both confirmation-control removal and changed `data-update`
 - Emits one JSON object per log line for ingestion by Docker logging systems
 - Provides a web status page and Docker health check
+- Provides machine-readable `/health` and `/status.json` endpoints
 - Runs as a non-root container user
 
 ## Quick start with Docker Compose

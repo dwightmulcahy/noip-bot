@@ -66,12 +66,25 @@ class StateStore:
         self.save()
 
     def record_host(self, hostname, old_data_update, new_data_update, expires_in_days=None):
-        self.state["hosts"][hostname] = {
+        host = self.state["hosts"].setdefault(hostname, {})
+        host.update({
             "last_verified_renewal": utc_now(),
             "previous_data_update": old_data_update,
             "data_update": new_data_update,
             "expires_in_days": expires_in_days,
-        }
+        })
+        self.save()
+
+    def record_inventory(self, inventory):
+        observed = utc_now()
+        for hostname, host in self.state["hosts"].items():
+            if hostname not in inventory:
+                host["active"] = False
+        for hostname, details in inventory.items():
+            host = self.state["hosts"].setdefault(hostname, {})
+            host.update(details)
+            host["last_observed"] = observed
+            host["active"] = True
         self.save()
 
     def record_success(self, next_check=None, host_expirations=None, next_renewal_days=None):

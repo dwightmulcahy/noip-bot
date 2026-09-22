@@ -47,6 +47,30 @@ class StateStoreTests(unittest.TestCase):
 
             self.assertEqual(StateStore(path).state["next_check"], scheduled)
 
+    def test_inventory_tracks_current_and_removed_hosts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state.json")
+            store = StateStore(path)
+            store.record_inventory({
+                "first.ddns.net": {
+                    "host_id": "1",
+                    "data_update": "old",
+                    "expires_in_days": None,
+                    "renewal_available": False,
+                }
+            })
+            store.record_inventory({
+                "second.ddns.net": {
+                    "host_id": "2",
+                    "data_update": "new",
+                    "expires_in_days": 5,
+                    "renewal_available": True,
+                }
+            })
+            reloaded = StateStore(path).state["hosts"]
+            self.assertFalse(reloaded["first.ddns.net"]["active"])
+            self.assertTrue(reloaded["second.ddns.net"]["active"])
+
 
 if __name__ == "__main__":
     unittest.main()

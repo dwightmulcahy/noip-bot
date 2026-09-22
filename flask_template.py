@@ -5,6 +5,9 @@ from utils import UpTime
 from http import HTTPStatus
 import waitress
 import sys
+import os
+from health_status import evaluate_health
+from state_store import StateStore
 if not sys.version_info > (3, 6):
     print('Python3.6 is required to run this')
     sys.exit(-1)
@@ -39,17 +42,25 @@ def getPageMsg():
 # health check endpoint
 @app.route('/health')
 def health():
-    log.info(f'{app_Name} /health endpoint executing')
+    log.debug(f'{app_Name} /health endpoint executing')
+    grace = int(os.environ.get('HEALTH_OVERDUE_GRACE_SECONDS', '3600'))
+    payload = evaluate_health(StateStore().state, overdue_grace_seconds=grace)
+    payload["uptime"] = str(uptime)
+    return flask.jsonify(payload), HTTPStatus.OK if payload["healthy"] else HTTPStatus.SERVICE_UNAVAILABLE
 
-    # build the response to send back
-    res = HTTPStatus.OK
 
-    return f'Current Health Status: {res.phrase}<br><br>{app_Name} uptime: {str(uptime)}', res.value
+@app.route('/status.json')
+def status_json():
+    state = StateStore().state
+    payload = evaluate_health(state)
+    payload["uptime"] = str(uptime)
+    payload["hosts"] = state.get("hosts", {})
+    return flask.jsonify(payload), HTTPStatus.OK
 
 
 @app.route('/')
 def hello():
-    log.info(f'{app_Name} / endpoint executing')
+    log.debug(f'{app_Name} / endpoint executing')
     return getPageMsg(), http.HTTPStatus.OK.numerator
 
 
