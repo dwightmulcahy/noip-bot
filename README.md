@@ -21,8 +21,9 @@ optional Gmail notifications, and exposes a small status page.
   30-day expiration value
 - Emits one JSON object per log line for ingestion by Docker logging systems
 - Supports a true dry-run mode that never clicks a renewal control
-- Provides a web status page and Docker health check
-- Provides machine-readable `/health` and `/status.json` endpoints
+- Provides a minimal unauthenticated `/health` endpoint for container checks
+- Protects detailed `/` and `/status.json` responses with bearer authentication
+- Redacts host IDs and exception messages from detailed status output
 - Runs as a non-root container user
 
 ## Quick start with Docker Compose
@@ -33,7 +34,8 @@ optional Gmail notifications, and exposes a small status page.
    cp .env.example .env
    ```
 
-2. Set at minimum `NOIP_ID` and `NOIP_PASSWORD` in `.env`. If No-IP
+2. Set at minimum `NOIP_ID`, `NOIP_PASSWORD`, and a random `STATUS_TOKEN` in
+   `.env`. Generate the status token with `openssl rand -hex 32`. If No-IP
    requires an emailed code, also configure the verification email fields.
 
 3. Build and run:
@@ -42,7 +44,13 @@ optional Gmail notifications, and exposes a small status page.
    docker compose up -d --build
    ```
 
-4. Open `http://localhost:8080`.
+4. Check public container health and authenticated detailed status:
+
+   ```sh
+   curl http://localhost:8080/health
+   curl -H "Authorization: Bearer ${STATUS_TOKEN}" \
+     http://localhost:8080/status.json
+   ```
 
 Diagnostic screenshots are written beneath `./data/screenshots`.
 
@@ -59,6 +67,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `NOTIFICATION_TIMEOUT_SECONDS` | Maximum notification blocking time | `30` |
 | `BIND_ADDR` | Status server bind address | `0.0.0.0` in Docker |
 | `PORT` | Status server port | `8080` in Docker |
+| `STATUS_TOKEN` | Bearer token protecting `/` and `/status.json`; minimum 32 characters | detailed status disabled |
 | `TZ` | Scheduler timezone | `America/Costa_Rica` |
 | `SCREENSHOT_DIR` | Diagnostic screenshot directory | `/app/data/screenshots` |
 | `STATE_FILE` | Persistent renewal-state JSON file | `/app/data/state.json` |
@@ -112,13 +121,14 @@ DRY_RUN=true docker compose up --build
 ```
 
 Dry-run results are written to `state.json` as `dry_run` and
-`would_renew`, and are exposed by `/health` and `/status.json`. Enabling
+`would_renew`, and are exposed by authenticated `/status.json`. Enabling
 dry-run bypasses a restored future schedule once so the validation runs
 immediately.
 
 `SKIP_INITIAL_RUN=true` is intended for container smoke tests and maintenance.
 It starts the scheduler and status server without contacting No-IP. Until a
-real renewal check succeeds, `/health` correctly remains unhealthy.
+real renewal check succeeds, `/health` correctly returns HTTP 503 with only
+the `status` and `healthy` fields.
 
 ## Operational notes
 
@@ -139,8 +149,13 @@ real renewal check succeeds, `/health` correctly remains unhealthy.
 - The process schedules a next-day retry after a failed No-IP run.
 - Notification delivery failures are isolated from renewal and scheduling. They
   are recorded under `notifications` in `state.json` and exposed as
-  `notification_status` by `/health` and `/status.json`; they do not make the
+  `notification_status` by authenticated `/status.json`; they do not make the
   renewal health check fail. An unconfigured sender reports `disabled`.
+- Docker Compose publishes the status service only on `127.0.0.1` by default.
+  To expose it to a LAN, deliberately change the port mapping and use a strong
+  `STATUS_TOKEN`. `/health` remains unauthenticated but contains no timestamps,
+  hostnames, errors, or scheduling details. Detailed endpoints return HTTP 503
+  when no token of at least 32 characters is configured.
 - State updates use an inter-process file lock and reload the latest state
   before mutation so scheduler, web, and notification writers do not overwrite
   one another.
@@ -155,8 +170,9 @@ real renewal check succeeds, `/health` correctly remains unhealthy.
 
 Every push and pull request runs the Python test suite, compiles all Python
 sources, verifies the application imports, builds and boots the Docker image,
-checks `/status.json` and `/health`, and scans the image with Trivy. Fixable
-high or critical vulnerabilities fail verification.
+checks authenticated `/status.json`, rejects unauthorized status access,
+checks minimal `/health`, and scans the image with Trivy. Fixable high or
+critical vulnerabilities fail verification.
 
 CI also enforces Ruff linting and formatting plus Mypy checks for the typed
 configuration, orchestration, state, scheduling, health, and notification core.

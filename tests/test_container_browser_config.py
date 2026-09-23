@@ -21,6 +21,11 @@ class ContainerBrowserConfigTests(unittest.TestCase):
         source = (ROOT / "notifications.py").read_text(encoding="utf-8")
         self.assertIn("sendEmail(send_to, subject, str(body))", source)
 
+    def test_status_port_defaults_to_localhost_and_accepts_token(self):
+        compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        self.assertIn('"127.0.0.1:8080:8080"', compose)
+        self.assertIn("STATUS_TOKEN: ${STATUS_TOKEN:-}", compose)
+
 
 if __name__ == "__main__":
     unittest.main()

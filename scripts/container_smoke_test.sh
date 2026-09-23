@@ -3,6 +3,7 @@ set -euo pipefail
 
 image="${1:-noip-bot:verify}"
 container="noip-bot-smoke-${RANDOM}"
+status_token="noip-bot-smoke-status-token-1234567890"
 
 cleanup() {
   docker logs "$container" 2>/dev/null || true
@@ -15,11 +16,14 @@ docker run --detach --name "$container" \
   --publish 127.0.0.1::8080 \
   --env SKIP_INITIAL_RUN=true \
   --env STATE_FILE=/app/data/smoke-state.json \
+  --env STATUS_TOKEN="$status_token" \
   "$image" >/dev/null
 
 port="$(docker port "$container" 8080/tcp | sed 's/.*://')"
 for attempt in {1..30}; do
-  if curl --fail --silent "http://127.0.0.1:${port}/status.json" >/tmp/noip-status.json; then
+  if curl --fail --silent \
+    --header "Authorization: Bearer ${status_token}" \
+    "http://127.0.0.1:${port}/status.json" >/tmp/noip-status.json; then
     break
   fi
   if [[ "$attempt" == 30 ]]; then
@@ -40,6 +44,10 @@ assert payload["healthy"] is False, payload
 assert "hosts" in payload, payload
 PY
 
+unauthorized_code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  "http://127.0.0.1:${port}/status.json")"
+test "$unauthorized_code" = "401"
+
 http_code="$(curl --silent --output /tmp/noip-health.json --write-out '%{http_code}' \
   "http://127.0.0.1:${port}/health")"
 test "$http_code" = "503"
@@ -50,5 +58,5 @@ import sys
 with open(sys.argv[1], encoding="utf-8") as health_file:
     payload = json.load(health_file)
 assert payload["status"] == "unhealthy", payload
-assert "no successful renewal check has completed" in payload["reasons"], payload
+assert set(payload) == {"status", "healthy"}, payload
 PY

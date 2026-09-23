@@ -22,8 +22,9 @@ services:
       SKIP_INITIAL_RUN: ${SKIP_INITIAL_RUN:-false}
       MAX_CHECK_INTERVAL_DAYS: ${MAX_CHECK_INTERVAL_DAYS:-5}
       NOTIFICATION_TIMEOUT_SECONDS: ${NOTIFICATION_TIMEOUT_SECONDS:-30}
+      STATUS_TOKEN: ${STATUS_TOKEN:-}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./data:/app/data
     healthcheck:
