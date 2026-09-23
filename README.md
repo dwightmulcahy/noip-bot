@@ -189,6 +189,9 @@ the `status` and `healthy` fields.
 - The Python base image is pinned by exact patch version and multi-architecture
   digest. Dependabot should be allowed to update this digest so security fixes
   are deliberate and reviewable rather than silently changing builds.
+- The image explicitly upgrades `libpcre2-8-0` from Debian security metadata
+  and fails the build if it is older than `10.42-1+deb12u1`, preventing the
+  pinned base layer from reintroducing the fixed PCRE2 memory-corruption CVEs.
 - The Compose service runs as UID/GID `10001`, drops every Linux capability,
   enables `no-new-privileges`, uses a read-only root filesystem, limits the
   process count to 256 and memory to 1 GiB, and uses an init process for signal
