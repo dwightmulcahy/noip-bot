@@ -15,6 +15,7 @@ optional Gmail notifications, and exposes a small status page.
 - Sends deduplicated failure alerts and a notification after recovery
 - Prevents overlapping browser renewals with an inter-process whole-run lock
 - Validates live No-IP markup against tested login, MFA, host, and renewal contracts
+- Uses injected, instance-owned status services instead of mutable module globals
 - Stores diagnostic screenshots in a configurable persistent directory
 - Persists verified renewal state atomically across restarts
 - Restores a still-future scheduled check instead of rerunning immediately
@@ -207,8 +208,10 @@ checks authenticated `/status.json`, rejects unauthorized status access,
 checks minimal `/health`, and scans the image with Trivy. Fixable high or
 critical vulnerabilities fail verification.
 
-CI also enforces Ruff linting and formatting plus Mypy checks for the typed
-configuration, orchestration, state, scheduling, health, and notification core.
+CI also enforces Ruff linting and formatting plus Mypy checks across 14
+operational modules: the CLI, typed configuration and orchestration, Selenium
+renewal engine, HTML contracts, persistent state, run locking, status server,
+scheduling, health, logging, timing, notifications, and version resolution.
 
 CI separately verifies installed versions of security-sensitive Python
 packages before Trivy runs. Trivy ignores pip's embedded

@@ -11,8 +11,16 @@ files = [
     "app_config.py",
     "application.py",
     "health_status.py",
+    "host_timing.py",
+    "logging_config.py",
+    "noip_bot.py",
+    "noip_renew/noip_renew.py",
+    "noip_renew/page_contract.py",
     "notifications.py",
+    "run_lock.py",
     "scheduling.py",
+    "state_store.py",
+    "status_server.py",
     "version.py",
 ]
 ignore_missing_imports = true

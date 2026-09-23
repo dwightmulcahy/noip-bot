@@ -1,3 +1,4 @@
+import ast
 import pathlib
 import unittest
 
@@ -31,6 +32,28 @@ class CodeQualityConfigTests(unittest.TestCase):
     def test_obsolete_flask_template_was_removed(self):
         self.assertFalse((ROOT / "flask_template.py").exists())
         self.assertTrue((ROOT / "status_server.py").exists())
+
+    def test_status_server_has_no_mutable_module_state(self):
+        source = (ROOT / "status_server.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        forbidden = (ast.Global, ast.AsyncFunctionDef)
+        self.assertFalse(any(isinstance(node, forbidden) for node in ast.walk(tree)))
+        self.assertNotIn(
+            "flask.Flask(__name__)\n", source.split("class StatusServer:")[0]
+        )
+
+    def test_mypy_covers_operational_core(self):
+        config = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        for module in (
+            "noip_bot.py",
+            "noip_renew/noip_renew.py",
+            "noip_renew/page_contract.py",
+            "run_lock.py",
+            "state_store.py",
+            "status_server.py",
+        ):
+            with self.subTest(module=module):
+                self.assertIn(f'"{module}"', config)
 
 
 if __name__ == "__main__":

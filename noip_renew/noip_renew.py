@@ -434,6 +434,7 @@ class Robot:
             hostname = f"{name}.{zone}"
             label = row.get_attribute("data-label") or ""
             host_id_match = re.search(r"host=(\d+)", label)
+            host_id = host_id_match.group(1) if host_id_match else None
             expiration = None
             popovers = row.find_elements(
                 By.XPATH,
@@ -446,12 +447,10 @@ class Robot:
                 if expiration_match:
                     expiration = int(expiration_match.group(0))
             inventory[hostname] = {
-                "host_id": host_id_match.group(1) if host_id_match else None,
+                "host_id": host_id,
                 "data_update": row.get_attribute("data-update"),
                 "expires_in_days": expiration,
-                "renewal_available": (
-                    bool(host_id_match) and host_id_match.group(1) in renewable_host_ids
-                ),
+                "renewal_available": host_id in renewable_host_ids,
             }
             inventory[hostname].update(
                 derive_cycle_timing(inventory[hostname]["data_update"])

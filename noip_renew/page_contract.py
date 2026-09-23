@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from typing import Any
 
 
 class PageContractError(RuntimeError):
@@ -23,16 +24,18 @@ class _ContractParser(HTMLParser):
         self.inputs: list[dict[str, str]] = []
         self.buttons: list[dict[str, str]] = []
         self.links: list[dict[str, str]] = []
-        self.hosts: list[dict[str, object]] = []
+        self.hosts: list[dict[str, Any]] = []
         self._ids: list[str] = []
-        self._current_host: dict[str, object] | None = None
+        self._current_host: dict[str, Any] | None = None
         self._host_div_depth = 0
 
     @staticmethod
-    def _attributes(attributes) -> dict[str, str]:
+    def _attributes(attributes: list[tuple[str, str | None]]) -> dict[str, str]:
         return {key: value or "" for key, value in attributes}
 
-    def handle_starttag(self, tag, attributes) -> None:
+    def handle_starttag(
+        self, tag: str, attributes: list[tuple[str, str | None]]
+    ) -> None:
         attrs = self._attributes(attributes)
         element_id = attrs.get("id", "")
         if tag == "form" and element_id:
@@ -89,7 +92,7 @@ class _ContractParser(HTMLParser):
         }:
             self._ids.append(element_id)
 
-    def handle_endtag(self, tag) -> None:
+    def handle_endtag(self, tag: str) -> None:
         if tag == "div" and self._current_host is not None:
             self._host_div_depth -= 1
             if self._host_div_depth == 0:

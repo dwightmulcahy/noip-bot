@@ -3,7 +3,7 @@ import datetime
 import logging
 from datetime import date, timedelta
 from random import randrange, uniform
-from typing import Any, Callable
+from typing import Callable, Protocol
 from zoneinfo import ZoneInfo
 
 from dateutil.relativedelta import relativedelta
@@ -21,7 +21,7 @@ from scheduling import (
     should_notify_failure,
 )
 from state_store import StateStore
-from status_server import setPageMsg, startWebServer
+from status_server import StatusServer
 from utils import getMyIpAddr
 
 
@@ -36,16 +36,34 @@ class RenewalRunLockedError(RenewalUpdateError):
     """Raised when another process already owns the renewal-run lock."""
 
 
+class RenewalRobot(Protocol):
+    updatedHosts: list[str]
+    wouldUpdateHosts: list[str]
+    host_expirations: dict[str, int]
+    next_renewal: int
+    dry_run: bool
+
+    def run(self) -> int: ...
+
+
+class StatusService(Protocol):
+    def set_page_message(self, message: str) -> None: ...
+
+    def serve(self, bind: str, port: int, debug: bool = False) -> None: ...
+
+
 class NoIpApplication:
     def __init__(
         self,
         config: AppConfig,
         app_name: str = "noip_bot",
-        robot_factory: Callable[..., Any] = Robot,
+        robot_factory: Callable[..., RenewalRobot] = Robot,
+        status_server_factory: Callable[[str], StatusService] = StatusServer,
     ) -> None:
         self.config = config
         self.app_name = app_name
         self.robot_factory = robot_factory
+        self.status_server = status_server_factory(app_name)
 
     def send_email(self, send_to: str, subject: str, body: object) -> bool:
         try:
@@ -192,7 +210,7 @@ class NoIpApplication:
         email_body = self._build_update_summary(
             noip, next_check_date, next_check_hour, next_check_minute
         )
-        setPageMsg(email_body)
+        self.status_server.set_page_message(email_body)
         if noip.updatedHosts:
             self.send_email(
                 self.config.noip_id,
@@ -202,7 +220,7 @@ class NoIpApplication:
 
     @staticmethod
     def _build_update_summary(
-        noip: Any,
+        noip: RenewalRobot,
         next_check_date: date,
         next_check_hour: int,
         next_check_minute: int,
@@ -306,8 +324,7 @@ class NoIpApplication:
             getMyIpAddr(),
             self.config.port,
         )
-        startWebServer(
-            self.app_name,
+        self.status_server.serve(
             bind=self.config.bind_address,
             port=self.config.port,
         )

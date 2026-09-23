@@ -5,6 +5,7 @@ import threading
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
+from typing import Any
 
 import fcntl
 
@@ -15,7 +16,7 @@ def utc_now():
 
 class StateStore:
     _PROCESS_LOCK = threading.RLock()
-    DEFAULT_STATE = {
+    DEFAULT_STATE: dict[str, Any] = {
         "schema_version": 4,
         "last_run": None,
         "last_success": None,
@@ -67,10 +68,10 @@ class StateStore:
         state.update(loaded)
         state["schema_version"] = self.DEFAULT_STATE["schema_version"]
         state["hosts"] = loaded.get("hosts", {})
-        notifications = deepcopy(self.DEFAULT_STATE["notifications"])
+        notifications: dict[str, Any] = deepcopy(self.DEFAULT_STATE["notifications"])
         notifications.update(loaded.get("notifications", {}))
         state["notifications"] = notifications
-        retry = deepcopy(self.DEFAULT_STATE["retry"])
+        retry: dict[str, Any] = deepcopy(self.DEFAULT_STATE["retry"])
         retry.update(loaded.get("retry", {}))
         state["retry"] = retry
         return state

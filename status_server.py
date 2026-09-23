@@ -1,41 +1,34 @@
-import flask
 import hmac
+import logging
 import os
-
+import threading
+from collections.abc import Callable
 from http import HTTPStatus
+from typing import Any, Protocol
 
+import flask
 import waitress
 
 from health_status import evaluate_health
 from state_store import StateStore
 from utils import UpTime
 
-# formatting for log messages
-import logging
 
 log = logging.getLogger(__name__)
 
-# start flask using the appname
-app = flask.Flask(__name__)
 
-# set the app name to use
-APP_NAME = "Piku Template Flask App"
-app_Name = APP_NAME
-uptime = UpTime()
-
-BIND_ADDRESS = "0.0.0.0"  # nosec
-PORT = 9090
+class StateReader(Protocol):
+    state: dict[str, Any]
 
 
-# msg to display for webpage
-pageMsg = "Empty!"
+StateStoreFactory = Callable[[], StateReader]
 
 
-def _status_token():
+def _status_token() -> str:
     return os.environ.get("STATUS_TOKEN", "").strip()
 
 
-def _is_authorized():
+def _is_authorized() -> bool:
     token = _status_token()
     if len(token) < 32:
         return False
@@ -48,7 +41,7 @@ def _is_authorized():
     )
 
 
-def _authentication_error():
+def _authentication_error() -> tuple[flask.Response, HTTPStatus]:
     if len(_status_token()) < 32:
         return (
             flask.jsonify(
@@ -64,98 +57,95 @@ def _authentication_error():
     return response, HTTPStatus.UNAUTHORIZED
 
 
-def _redact_error(error):
+def _redact_error(error: object) -> dict[str, Any] | None:
     if not isinstance(error, dict):
         return None
     return {key: value for key, value in error.items() if key in {"timestamp", "type"}}
 
 
-def _detailed_status(state):
-    payload = evaluate_health(state)
-    error_message = (payload.get("last_error") or {}).get("message")
-    if error_message:
-        payload["reasons"] = [
-            "the last renewal check failed" if reason == error_message else reason
-            for reason in payload["reasons"]
-        ]
-    payload["last_error"] = _redact_error(payload.get("last_error"))
-    notifications = dict(payload.get("notifications") or {})
-    notifications["last_error"] = _redact_error(notifications.get("last_error"))
-    payload["notifications"] = notifications
-    payload["hosts"] = {
-        hostname: {key: value for key, value in details.items() if key != "host_id"}
-        for hostname, details in state.get("hosts", {}).items()
-    }
-    payload["uptime"] = str(uptime)
-    return payload
+class StatusServer:
+    def __init__(
+        self,
+        app_name: str,
+        state_store_factory: StateStoreFactory = StateStore,
+    ) -> None:
+        self.app_name = app_name
+        self.state_store_factory = state_store_factory
+        self.uptime = UpTime()
+        self._page_message = "Empty!"
+        self._message_lock = threading.RLock()
+        self.app = flask.Flask(__name__)
+        self._register_routes()
 
+    def set_page_message(self, message: str) -> None:
+        with self._message_lock:
+            self._page_message = message.replace("\n", "<br>")
 
-@app.after_request
-def disable_status_caching(response):
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    def get_page_message(self) -> str:
+        with self._message_lock:
+            return self._page_message
 
+    def _detailed_status(self, state: dict[str, Any]) -> dict[str, Any]:
+        payload = evaluate_health(state)
+        error_message = (payload.get("last_error") or {}).get("message")
+        if error_message:
+            payload["reasons"] = [
+                "the last renewal check failed" if reason == error_message else reason
+                for reason in payload["reasons"]
+            ]
+        payload["last_error"] = _redact_error(payload.get("last_error"))
+        notifications = dict(payload.get("notifications") or {})
+        notifications["last_error"] = _redact_error(notifications.get("last_error"))
+        payload["notifications"] = notifications
+        payload["hosts"] = {
+            hostname: {key: value for key, value in details.items() if key != "host_id"}
+            for hostname, details in state.get("hosts", {}).items()
+        }
+        payload["uptime"] = str(self.uptime)
+        return payload
 
-def setPageMsg(msg):
-    global pageMsg
-    pageMsg = msg.replace("\n", "<br>")
+    def _register_routes(self) -> None:
+        @self.app.after_request
+        def disable_status_caching(response: flask.Response) -> flask.Response:
+            response.headers["Cache-Control"] = "no-store"
+            return response
 
+        @self.app.route("/health")
+        def health() -> tuple[flask.Response, HTTPStatus]:
+            log.debug("%s /health endpoint executing", self.app_name)
+            grace = int(os.environ.get("HEALTH_OVERDUE_GRACE_SECONDS", "3600"))
+            payload = evaluate_health(
+                self.state_store_factory().state,
+                overdue_grace_seconds=grace,
+            )
+            public_payload = {
+                "status": payload["status"],
+                "healthy": payload["healthy"],
+            }
+            status_code = (
+                HTTPStatus.OK if payload["healthy"] else HTTPStatus.SERVICE_UNAVAILABLE
+            )
+            return flask.jsonify(public_payload), status_code
 
-def getPageMsg():
-    return pageMsg
+        @self.app.route("/status.json")
+        def status_json() -> tuple[flask.Response, HTTPStatus]:
+            if not _is_authorized():
+                return _authentication_error()
+            state = self.state_store_factory().state
+            return flask.jsonify(self._detailed_status(state)), HTTPStatus.OK
 
+        @self.app.route("/")
+        def root() -> tuple[str, HTTPStatus] | tuple[flask.Response, HTTPStatus]:
+            log.debug("%s / endpoint executing", self.app_name)
+            if not _is_authorized():
+                return _authentication_error()
+            return self.get_page_message(), HTTPStatus.OK
 
-# health check endpoint
-@app.route("/health")
-def health():
-    log.debug(f"{app_Name} /health endpoint executing")
-    grace = int(os.environ.get("HEALTH_OVERDUE_GRACE_SECONDS", "3600"))
-    payload = evaluate_health(StateStore().state, overdue_grace_seconds=grace)
-    public_payload = {"status": payload["status"], "healthy": payload["healthy"]}
-    status_code = (
-        HTTPStatus.OK if payload["healthy"] else HTTPStatus.SERVICE_UNAVAILABLE
-    )
-    return flask.jsonify(public_payload), status_code
-
-
-@app.route("/status.json")
-def status_json():
-    if not _is_authorized():
-        return _authentication_error()
-    state = StateStore().state
-    return flask.jsonify(_detailed_status(state)), HTTPStatus.OK
-
-
-@app.route("/")
-def hello():
-    log.debug(f"{app_Name} / endpoint executing")
-    if not _is_authorized():
-        return _authentication_error()
-    return getPageMsg(), HTTPStatus.OK
-
-
-def startWebServer(appName=APP_NAME, bind=BIND_ADDRESS, port=PORT, debug=False):
-    global app_Name
-    app_Name = appName
-    if debug:
-        log.info(f"Starting flask server on {bind}:{port}")
-        # run the built-in flask server
-        # FOR DEVELOPMENT/DEBUGGING ONLY
-        app.run(threaded=True, host=bind, port=port, debug=False)
-    else:
+    def serve(self, bind: str, port: int, debug: bool = False) -> None:
+        if debug:
+            log.info("Starting flask server on %s:%s", bind, port)
+            self.app.run(threaded=True, host=bind, port=port, debug=False)
+            return
         logging.getLogger("waitress").setLevel(logging.ERROR)
-        log.info(f"Starting waitress server on {bind}:{port}")
-        # Run the production server
-        waitress.serve(app, host=bind, port=port, threads=4)
-
-
-if __name__ == "__main__":
-    log.info(f"Started {app_Name}")
-
-    log.info(f"Running {app_Name} press Ctrl+C to exit.")
-    try:
-        startWebServer(debug=False)
-    except (KeyboardInterrupt, SystemExit):
-        log.info("Shutting down...")
-    except RuntimeError as err:
-        log.error(f"RuntimeError.\n{err}")
+        log.info("Starting waitress server on %s:%s", bind, port)
+        waitress.serve(self.app, host=bind, port=port, threads=4)

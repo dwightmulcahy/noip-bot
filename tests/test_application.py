@@ -37,20 +37,22 @@ class ApplicationTests(unittest.TestCase):
                 skip_initial_run=True,
             )
             robot_factory = Mock(side_effect=AssertionError("robot must not start"))
-            application = NoIpApplication(config, robot_factory=robot_factory)
+            status_server = Mock()
+            application = NoIpApplication(
+                config,
+                robot_factory=robot_factory,
+                status_server_factory=Mock(return_value=status_server),
+            )
 
             with (
                 patch.dict(os.environ, {"STATE_FILE": state_path}),
                 patch.object(application, "send_email", return_value=False),
-                patch("application.startWebServer") as start_server,
             ):
                 application.run()
 
             robot_factory.assert_not_called()
             self.assertEqual(scheduler.jobs, [])
-            start_server.assert_called_once_with(
-                "noip_bot", bind="127.0.0.1", port=8080
-            )
+            status_server.serve.assert_called_once_with(bind="127.0.0.1", port=8080)
 
     def test_failure_schedules_escalating_retry_and_sends_first_alert(self):
         with tempfile.TemporaryDirectory() as directory:

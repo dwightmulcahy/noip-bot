@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-import status_server
+from status_server import StatusServer
 
 
 STATUS_TOKEN = "test-status-token-that-is-at-least-32-characters"
@@ -39,14 +39,14 @@ class FakeStateStore:
 
 class StatusServerSecurityTests(unittest.TestCase):
     def setUp(self):
-        self.client = status_server.app.test_client()
+        self.server = StatusServer("test-noip-bot", FakeStateStore)
+        self.client = self.server.app.test_client()
 
     def request_status(self, token=STATUS_TOKEN):
         return self.client.get(
             "/status.json", headers={"Authorization": f"Bearer {token}"}
         )
 
-    @patch.object(status_server, "StateStore", FakeStateStore)
     def test_health_is_unauthenticated_and_minimal(self):
         with patch.dict(os.environ, {"STATUS_TOKEN": STATUS_TOKEN}):
             response = self.client.get("/health")
@@ -55,7 +55,6 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertEqual(response.get_json(), {"status": "unhealthy", "healthy": False})
         self.assertEqual(response.headers["Cache-Control"], "no-store")
 
-    @patch.object(status_server, "StateStore", FakeStateStore)
     def test_detailed_status_requires_bearer_token(self):
         with patch.dict(os.environ, {"STATUS_TOKEN": STATUS_TOKEN}):
             missing = self.client.get("/status.json")
@@ -65,7 +64,6 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertEqual(incorrect.status_code, 401)
         self.assertEqual(missing.headers["WWW-Authenticate"], "Bearer")
 
-    @patch.object(status_server, "StateStore", FakeStateStore)
     def test_short_or_missing_token_disables_detailed_status(self):
         with patch.dict(os.environ, {"STATUS_TOKEN": "short"}):
             response = self.request_status("short")
@@ -73,7 +71,6 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.get_json()["status"], "unavailable")
 
-    @patch.object(status_server, "StateStore", FakeStateStore)
     def test_authorized_status_redacts_sensitive_details(self):
         with patch.dict(os.environ, {"STATUS_TOKEN": STATUS_TOKEN}):
             response = self.request_status()
@@ -94,6 +91,15 @@ class StatusServerSecurityTests(unittest.TestCase):
 
         self.assertEqual(unauthorized.status_code, 401)
         self.assertEqual(authorized.status_code, 200)
+
+    def test_server_instances_do_not_share_page_state(self):
+        first = StatusServer("first", FakeStateStore)
+        second = StatusServer("second", FakeStateStore)
+        first.set_page_message("first message")
+        second.set_page_message("second message")
+
+        self.assertEqual(first.get_page_message(), "first message")
+        self.assertEqual(second.get_page_message(), "second message")
 
 
 if __name__ == "__main__":
