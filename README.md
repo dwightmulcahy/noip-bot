@@ -148,9 +148,10 @@ sources, verifies the application imports, builds and boots the Docker image,
 checks `/status.json` and `/health`, and scans the image with Trivy. Fixable
 high or critical vulnerabilities fail verification.
 
-`constraints.txt` records security floors for vulnerable transitive or build
-packages that are present in the final image. These constraints must not be
-lowered merely to make the vulnerability scan pass.
+CI separately verifies installed versions of security-sensitive Python
+packages before Trivy runs. Trivy ignores pip's embedded
+`pip/_vendor/bom.cdx.json` because it describes pip's build environment—not
+packages installed in this image—and otherwise produces false positives.
 
 Publishing a GitHub Release builds and pushes a multi-architecture
 `linux/amd64` and `linux/arm64` image to:

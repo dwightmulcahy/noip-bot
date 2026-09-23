@@ -34,9 +34,8 @@ ENV CHROME_BIN=/usr/bin/chromium \
 
 WORKDIR /app
 
-COPY requirements.txt constraints.txt ./
-RUN python -m pip install --no-cache-dir --upgrade "setuptools>=78.1.1" \
-    && python -m pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
