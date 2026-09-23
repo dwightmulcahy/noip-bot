@@ -58,10 +58,11 @@ optional Gmail notifications, and exposes a small status page.
      http://localhost:8080/status.json
    ```
 
-5. Open `http://localhost:8080/` in a browser and sign in with
-   `STATUS_TOKEN` to view the status dashboard. Browser sessions expire after
-   12 hours. Set `STATUS_COOKIE_SECURE=true` when access is exclusively through
-   an HTTPS reverse proxy.
+5. Open `http://localhost:8080/` in a browser and request a six-digit login
+   code. The code is emailed to `STATUS_LOGIN_EMAIL` (or `NOIP_ID` when the
+   login address is omitted), expires after 10 minutes, and can be used once.
+   Browser sessions expire after 12 hours. Set `STATUS_COOKIE_SECURE=true` when
+   access is exclusively through an HTTPS reverse proxy.
 
 Diagnostic screenshots are written beneath `./data/screenshots`.
 
@@ -78,7 +79,8 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `NOTIFICATION_TIMEOUT_SECONDS` | Maximum notification blocking time | `30` |
 | `BIND_ADDR` | Status server bind address | `0.0.0.0` in Docker |
 | `PORT` | Status server port | `8080` in Docker |
-| `STATUS_TOKEN` | Bearer token protecting `/` and `/status.json`; minimum 32 characters | detailed status disabled |
+| `STATUS_TOKEN` | Bearer token protecting `/status.json` and signing browser sessions; minimum 32 characters | detailed status disabled |
+| `STATUS_LOGIN_EMAIL` | Recipient for six-digit browser-login codes | `NOIP_ID` |
 | `STATUS_COOKIE_SECURE` | Require HTTPS for the browser status-session cookie | `false` |
 | `TZ` | Scheduler timezone | `America/Costa_Rica` |
 | `SCREENSHOT_DIR` | Diagnostic screenshot directory | `/app/data/screenshots` |
@@ -174,7 +176,8 @@ the `status` and `healthy` fields.
   `STATUS_TOKEN`. `/health` remains unauthenticated but contains no timestamps,
   hostnames, errors, or scheduling details. Detailed endpoints return HTTP 503
   when no token of at least 32 characters is configured. The dashboard at `/`
-  uses the token to establish a 12-hour, HTTP-only, same-site browser session.
+  sends a single-use, six-digit code through the configured Gmail sender and
+  establishes a 12-hour, HTTP-only, same-site browser session after verification.
 - State updates use an inter-process file lock and reload the latest state
   before mutation so scheduler, web, and notification writers do not overwrite
   one another.

@@ -106,6 +106,7 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .alert { margin-bottom: 1rem; border-radius: 12px; padding: 0.9rem 1rem; }
 .alert-error { border: 1px solid #fecaca; background: var(--danger-bg); color: var(--danger); }
+.alert-success { border: 1px solid #bbf7d0; background: var(--healthy-bg); color: var(--healthy); }
 .alert ul { margin-bottom: 0; }
 .empty-state { padding: 3rem 1.5rem; color: var(--muted); text-align: center; }
 
@@ -132,6 +133,7 @@ label { display: block; margin-bottom: 0.4rem; font-size: 0.86rem; font-weight: 
 input { width: 100%; margin-bottom: 0.85rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; padding: 0.75rem; }
 input:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent) 18%, transparent); }
 .login-card button { width: 100%; }
+.secondary-form { margin-top: 0.75rem; }
 
 @media (max-width: 850px) {
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

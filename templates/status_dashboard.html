@@ -19,6 +19,7 @@
             <span class="status-dot" aria-hidden="true"></span>{{ status.status|title }}
           </span>
           <form method="post" action="{{ url_for('logout') }}">
+            <input name="csrf_token" type="hidden" value="{{ csrf_token }}">
             <button class="button-secondary" type="submit">Sign out</button>
           </form>
         </div>

@@ -11,13 +11,28 @@
       <div class="brand-mark" aria-hidden="true">N</div>
       <p class="eyebrow">No-IP renewal service</p>
       <h1>{{ app_name }}</h1>
-      <p class="muted">Enter your status token to view renewal health and host details.</p>
+      <p class="muted">Use a one-time code sent to {{ masked_email }} to view renewal health and host details.</p>
       {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
-      <form method="post" action="{{ url_for('login') }}">
-        <label for="token">Status token</label>
-        <input id="token" name="token" type="password" required autofocus autocomplete="current-password">
-        <button type="submit">View status</button>
-      </form>
+      {% if code_sent %}
+        <div class="alert alert-success" role="status">
+          A six-digit code was sent to {{ masked_email }}. It expires in {{ otp_ttl_minutes }} minutes.
+        </div>
+        <form method="post" action="{{ url_for('verify_login_code') }}">
+          <input name="csrf_token" type="hidden" value="{{ csrf_token }}">
+          <label for="code">Six-digit code</label>
+          <input id="code" name="code" type="text" required autofocus autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6">
+          <button type="submit">Verify code</button>
+        </form>
+        <form class="secondary-form" method="post" action="{{ url_for('send_login_code') }}">
+          <input name="csrf_token" type="hidden" value="{{ csrf_token }}">
+          <button class="button-secondary" type="submit">Send another code</button>
+        </form>
+      {% elif login_available %}
+        <form method="post" action="{{ url_for('send_login_code') }}">
+          <input name="csrf_token" type="hidden" value="{{ csrf_token }}">
+          <button type="submit">Email me a login code</button>
+        </form>
+      {% endif %}
     </main>
   </body>
 </html>

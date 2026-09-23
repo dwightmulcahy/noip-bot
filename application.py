@@ -1,6 +1,7 @@
 import calendar
 import datetime
 import logging
+import os
 from datetime import date, timedelta
 from random import randrange, uniform
 from typing import Callable, Protocol
@@ -58,12 +59,31 @@ class NoIpApplication:
         config: AppConfig,
         app_name: str = "noip_bot",
         robot_factory: Callable[..., RenewalRobot] = Robot,
-        status_server_factory: Callable[[str], StatusService] = StatusServer,
+        status_server_factory: Callable[..., StatusService] = StatusServer,
     ) -> None:
         self.config = config
         self.app_name = app_name
         self.robot_factory = robot_factory
-        self.status_server = status_server_factory(app_name)
+        self.status_server = status_server_factory(
+            app_name,
+            otp_sender=self._send_status_login_email,
+            otp_recipient=(
+                os.environ.get("STATUS_LOGIN_EMAIL", "").strip() or config.noip_id
+            ),
+        )
+
+    def _send_status_login_email(self, recipient: str, subject: str, body: str) -> bool:
+        server = self.config.gmail_server
+        if server is None:
+            return False
+        try:
+            return bool(server.sendEmail(recipient, subject, body))
+        except Exception:
+            log.exception(
+                "Status login email delivery failed",
+                extra={"event": "status_login_delivery_failed"},
+            )
+            return False
 
     def send_email(self, send_to: str, subject: str, body: object) -> bool:
         try:

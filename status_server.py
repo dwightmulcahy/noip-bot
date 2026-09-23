@@ -4,7 +4,9 @@ import logging
 import os
 import secrets
 import threading
+import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from http import HTTPStatus
 from typing import Any, Protocol
@@ -26,6 +28,18 @@ class StateReader(Protocol):
 
 
 StateStoreFactory = Callable[[], StateReader]
+OtpSender = Callable[[str, str, str], bool]
+
+OTP_TTL_SECONDS = 10 * 60
+OTP_RESEND_SECONDS = 60
+OTP_MAX_ATTEMPTS = 5
+
+
+@dataclass(slots=True)
+class OtpChallenge:
+    digest: bytes
+    expires_at: float
+    attempts_remaining: int
 
 
 def _status_token() -> str:
@@ -53,6 +67,24 @@ def _is_authorized() -> bool:
     return _is_bearer_authorized() or _is_session_authorized()
 
 
+def _csrf_token() -> str:
+    token = flask.session.get("csrf_token")
+    if not isinstance(token, str) or not token:
+        token = secrets.token_urlsafe(32)
+        flask.session["csrf_token"] = token
+    return token
+
+
+def _csrf_is_valid() -> bool:
+    expected = flask.session.get("csrf_token", "")
+    supplied = flask.request.form.get("csrf_token", "")
+    return bool(
+        isinstance(expected, str)
+        and expected
+        and hmac.compare_digest(supplied, expected)
+    )
+
+
 def _environment_flag(name: str, default: bool = False) -> bool:
     value = os.environ.get(name)
     if value is None:
@@ -69,6 +101,14 @@ def _display_timestamp(value: object) -> str:
         return parsed.astimezone(timezone).strftime("%b %d, %Y at %H:%M %Z")
     except (TypeError, ValueError, KeyError):
         return value
+
+
+def _masked_email(value: str) -> str:
+    local, separator, domain = value.partition("@")
+    if not separator:
+        return "configured address"
+    visible = local[:2] if len(local) > 2 else local[:1]
+    return f"{visible}{'*' * max(3, len(local) - len(visible))}@{domain}"
 
 
 def _authentication_error() -> tuple[flask.Response, HTTPStatus]:
@@ -98,12 +138,19 @@ class StatusServer:
         self,
         app_name: str,
         state_store_factory: StateStoreFactory = StateStore,
+        otp_sender: OtpSender | None = None,
+        otp_recipient: str = "",
     ) -> None:
         self.app_name = app_name
         self.state_store_factory = state_store_factory
         self.uptime = UpTime()
         self._page_message = "Empty!"
         self._message_lock = threading.RLock()
+        self._otp_lock = threading.RLock()
+        self._otp_challenge: OtpChallenge | None = None
+        self._otp_last_sent_at = 0.0
+        self._otp_sender = otp_sender
+        self._otp_recipient = otp_recipient.strip()
         self.app = flask.Flask(__name__)
         token = _status_token()
         self.app.secret_key = (
@@ -119,6 +166,39 @@ class StatusServer:
         )
         self.app.jinja_env.filters["status_time"] = _display_timestamp
         self._register_routes()
+
+    def _otp_digest(self, code: str) -> bytes:
+        secret_key = self.app.secret_key
+        if isinstance(secret_key, str):
+            secret_key = secret_key.encode()
+        return hmac.new(secret_key, code.encode(), hashlib.sha256).digest()
+
+    def _login_available(self) -> bool:
+        return bool(
+            len(_status_token()) >= 32
+            and self._otp_sender is not None
+            and self._otp_recipient
+        )
+
+    def _login_page(
+        self,
+        error: str | None = None,
+        code_sent: bool = False,
+        status: HTTPStatus = HTTPStatus.OK,
+    ) -> tuple[str, HTTPStatus]:
+        return (
+            flask.render_template(
+                "status_login.html",
+                app_name=self.app_name,
+                error=error,
+                code_sent=code_sent,
+                login_available=self._login_available(),
+                masked_email=_masked_email(self._otp_recipient),
+                otp_ttl_minutes=OTP_TTL_SECONDS // 60,
+                csrf_token=_csrf_token(),
+            ),
+            status,
+        )
 
     def set_page_message(self, message: str) -> None:
         with self._message_lock:
@@ -161,39 +241,128 @@ class StatusServer:
             response.headers["X-Frame-Options"] = "DENY"
             return response
 
-        @self.app.route("/login", methods=["GET", "POST"])
+        @self.app.get("/login")
         def login() -> tuple[str, HTTPStatus] | flask.Response:
-            token = _status_token()
-            if len(token) < 32:
-                return (
-                    flask.render_template(
-                        "status_login.html",
-                        app_name=self.app_name,
-                        error="Browser status is disabled until STATUS_TOKEN is configured.",
-                    ),
-                    HTTPStatus.SERVICE_UNAVAILABLE,
+            if _is_session_authorized():
+                return flask.redirect(flask.url_for("root"))
+            if not self._login_available():
+                return self._login_page(
+                    "Email login is unavailable. Configure Gmail, "
+                    "STATUS_LOGIN_EMAIL, and STATUS_TOKEN.",
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
                 )
-            if flask.request.method == "POST":
-                supplied_token = flask.request.form.get("token", "")
-                if hmac.compare_digest(supplied_token, token):
-                    flask.session.clear()
-                    flask.session["status_authenticated"] = True
-                    flask.session.permanent = True
-                    return flask.redirect(flask.url_for("root"))
-                return (
-                    flask.render_template(
-                        "status_login.html",
-                        app_name=self.app_name,
-                        error="The status token is incorrect.",
-                    ),
-                    HTTPStatus.UNAUTHORIZED,
+            return self._login_page()
+
+        @self.app.post("/login/send")
+        def send_login_code() -> tuple[str, HTTPStatus]:
+            if not _csrf_is_valid():
+                return self._login_page(
+                    "The login form expired. Please try again.",
+                    status=HTTPStatus.BAD_REQUEST,
                 )
-            return flask.render_template(
-                "status_login.html", app_name=self.app_name, error=None
+            if not self._login_available():
+                return self._login_page(
+                    "Email login is unavailable.",
+                    status=HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+            now = time.monotonic()
+            with self._otp_lock:
+                wait_seconds = OTP_RESEND_SECONDS - (now - self._otp_last_sent_at)
+                if wait_seconds > 0:
+                    return self._login_page(
+                        f"Please wait {int(wait_seconds) + 1} seconds before sending another code.",
+                        code_sent=self._otp_challenge is not None,
+                        status=HTTPStatus.TOO_MANY_REQUESTS,
+                    )
+                code = f"{secrets.randbelow(1_000_000):06d}"
+                challenge = OtpChallenge(
+                    digest=self._otp_digest(code),
+                    expires_at=now + OTP_TTL_SECONDS,
+                    attempts_remaining=OTP_MAX_ATTEMPTS,
+                )
+                self._otp_last_sent_at = now
+
+            subject = f"{self.app_name} status login code"
+            body = (
+                f"Your {self.app_name} status login code is **{code}**.\n\n"
+                f"It expires in {OTP_TTL_SECONDS // 60} minutes and can be used once. "
+                "If you did not request it, no action is required."
             )
+            sender = self._otp_sender
+            delivered = bool(sender and sender(self._otp_recipient, subject, body))
+            if not delivered:
+                with self._otp_lock:
+                    self._otp_challenge = None
+                log.error(
+                    "Unable to deliver status login code",
+                    extra={"event": "status_login_delivery_failed"},
+                )
+                return self._login_page(
+                    "The login code could not be delivered. Check the Gmail configuration.",
+                    status=HTTPStatus.BAD_GATEWAY,
+                )
+            with self._otp_lock:
+                self._otp_challenge = challenge
+            log.info(
+                "Status login code delivered",
+                extra={"event": "status_login_code_sent"},
+            )
+            return self._login_page(code_sent=True)
+
+        @self.app.post("/login/verify")
+        def verify_login_code() -> tuple[str, HTTPStatus] | flask.Response:
+            if not _csrf_is_valid():
+                return self._login_page(
+                    "The login form expired. Please try again.",
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+            supplied_code = flask.request.form.get("code", "").strip()
+            now = time.monotonic()
+            with self._otp_lock:
+                challenge = self._otp_challenge
+                if challenge is None or now >= challenge.expires_at:
+                    self._otp_challenge = None
+                    return self._login_page(
+                        "The login code has expired. Request a new code.",
+                        status=HTTPStatus.UNAUTHORIZED,
+                    )
+                valid = bool(
+                    len(supplied_code) == 6
+                    and supplied_code.isdigit()
+                    and hmac.compare_digest(
+                        self._otp_digest(supplied_code), challenge.digest
+                    )
+                )
+                if not valid:
+                    challenge.attempts_remaining -= 1
+                    if challenge.attempts_remaining <= 0:
+                        self._otp_challenge = None
+                        error = "Too many incorrect attempts. Request a new code."
+                    else:
+                        error = (
+                            "The login code is incorrect. "
+                            f"{challenge.attempts_remaining} attempts remain."
+                        )
+                    return self._login_page(
+                        error,
+                        code_sent=self._otp_challenge is not None,
+                        status=HTTPStatus.UNAUTHORIZED,
+                    )
+                self._otp_challenge = None
+
+            flask.session.clear()
+            flask.session["status_authenticated"] = True
+            flask.session.permanent = True
+            _csrf_token()
+            log.info(
+                "Status login succeeded", extra={"event": "status_login_succeeded"}
+            )
+            return flask.redirect(flask.url_for("root"))
 
         @self.app.post("/logout")
         def logout() -> flask.Response:
+            if not _csrf_is_valid():
+                flask.abort(HTTPStatus.BAD_REQUEST)
             flask.session.clear()
             return flask.redirect(flask.url_for("login"))
 
@@ -232,6 +401,7 @@ class StatusServer:
                     "status_dashboard.html",
                     app_name=self.app_name,
                     status=self._detailed_status(state),
+                    csrf_token=_csrf_token(),
                 ),
                 HTTPStatus.OK,
             )
