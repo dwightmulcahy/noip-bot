@@ -16,7 +16,7 @@ class DryRunTests(unittest.TestCase):
             reloaded = StateStore(path).state
             self.assertTrue(reloaded["dry_run"])
             self.assertEqual(reloaded["would_renew"], ["example.ddns.net"])
-            self.assertEqual(reloaded["schema_version"], 3)
+            self.assertEqual(reloaded["schema_version"], 4)
 
     def test_dry_run_branch_skips_click_path(self):
         source_path = (

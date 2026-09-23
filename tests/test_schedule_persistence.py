@@ -12,7 +12,12 @@ class SchedulePersistenceTests(unittest.TestCase):
             for node in ast.walk(tree)
             if isinstance(node, ast.FunctionDef) and node.name == "update_hosts"
         )
-        calls = [
+        persisted_methods = [
+            node.func.attr
+            for node in ast.walk(update_hosts)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        ]
+        next_check_calls = [
             node
             for node in ast.walk(update_hosts)
             if isinstance(node, ast.Call)
@@ -20,10 +25,11 @@ class SchedulePersistenceTests(unittest.TestCase):
             and node.func.attr == "record_next_check"
         ]
         self.assertEqual(
-            len(calls),
-            2,
-            "Both the retry schedule and successful schedule must be persisted",
+            len(next_check_calls),
+            1,
+            "The successful schedule must be persisted",
         )
+        self.assertIn("record_retry_scheduled", persisted_methods)
 
 
 if __name__ == "__main__":

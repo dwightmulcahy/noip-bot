@@ -2,7 +2,7 @@ import calendar
 import datetime
 import logging
 from datetime import date, timedelta
-from random import randrange
+from random import randrange, uniform
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
@@ -12,13 +12,23 @@ from app_config import AppConfig
 from githubMarkdown import GithubMarkdown
 from noip_renew import Robot
 from notifications import send_notification
-from scheduling import cap_future_check, days_until_check, future_check
+from scheduling import (
+    cap_future_check,
+    days_until_check,
+    future_check,
+    retry_delay_seconds,
+    should_notify_failure,
+)
 from state_store import StateStore
 from status_server import setPageMsg, startWebServer
 from utils import getMyIpAddr
 
 
 log = logging.getLogger(__name__)
+
+
+class RenewalUpdateError(RuntimeError):
+    """A renewal failure already handled by retry and notification logic."""
 
 
 class NoIpApplication:
@@ -53,6 +63,9 @@ class NoIpApplication:
     def update_hosts(self) -> None:
         log.info("Updating Hosts.")
         state_store = StateStore()
+        previous_failures = int(
+            state_store.state.get("retry", {}).get("consecutive_failures", 0)
+        )
         try:
             noip = self.robot_factory(
                 self.config.noip_id,
@@ -63,10 +76,12 @@ class NoIpApplication:
                 dry_run=self.config.dry_run,
             )
             noip.run()
-        except Exception:
+        except Exception as error:
+            failure_count = state_store.record_retry_failure(error)
+            retry_delay = retry_delay_seconds(failure_count, uniform(-0.1, 0.1))
             retry_date = datetime.datetime.now(
                 ZoneInfo(self.config.timezone)
-            ) + timedelta(days=1)
+            ) + timedelta(seconds=retry_delay)
             self.config.scheduler.add_job(
                 self.update_hosts,
                 "date",
@@ -74,11 +89,32 @@ class NoIpApplication:
                 id="Update Hosts",
                 replace_existing=True,
             )
-            state_store.record_next_check(retry_date.isoformat())
+            state_store.record_retry_scheduled(retry_date.isoformat())
             log.exception(
-                "No-IP update failed; retry scheduled for %s", retry_date.isoformat()
+                "No-IP update failed; retry %s scheduled for %s",
+                failure_count,
+                retry_date.isoformat(),
+                extra={
+                    "event": "retry_scheduled",
+                    "consecutive_failures": failure_count,
+                    "retry_delay_seconds": retry_delay,
+                    "next_retry": retry_date.isoformat(),
+                },
             )
-            raise
+            if should_notify_failure(failure_count):
+                self.send_email(
+                    self.config.noip_id,
+                    "NOIP-Bot renewal failure",
+                    "\n".join(
+                        [
+                            f"Renewal check failed ({type(error).__name__}).",
+                            f"Consecutive failures: {failure_count}.",
+                            f"Next retry: {retry_date.isoformat()}.",
+                            f"Error: {error}",
+                        ]
+                    ),
+                )
+            raise RenewalUpdateError(str(error)) from error
 
         for host_name in noip.updatedHosts:
             log.info('Updated host "%s" for 30 more days', host_name)
@@ -120,6 +156,13 @@ class NoIpApplication:
             replace_existing=True,
         )
         state_store.record_next_check(next_check.isoformat())
+
+        if previous_failures:
+            self.send_email(
+                self.config.noip_id,
+                "NOIP-Bot renewal recovered",
+                f"Renewal checks recovered after {previous_failures} consecutive failures.",
+            )
 
         email_body = self._build_update_summary(
             noip, next_check_date, next_check_hour, next_check_minute

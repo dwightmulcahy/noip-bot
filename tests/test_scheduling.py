@@ -1,7 +1,13 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from scheduling import cap_future_check, days_until_check, future_check
+from scheduling import (
+    cap_future_check,
+    days_until_check,
+    future_check,
+    retry_delay_seconds,
+    should_notify_failure,
+)
 
 
 class SchedulingTests(unittest.TestCase):
@@ -54,6 +60,22 @@ class SchedulingTests(unittest.TestCase):
         scheduled = now + timedelta(days=2)
         self.assertEqual(cap_future_check(scheduled, now, 5), scheduled)
         self.assertIsNone(cap_future_check(None, now, 5))
+
+    def test_retry_delay_escalates_and_caps_at_one_day(self):
+        self.assertEqual(
+            [retry_delay_seconds(attempt) for attempt in range(1, 7)],
+            [900, 3600, 21600, 86400, 86400, 86400],
+        )
+
+    def test_retry_jitter_is_bounded_to_ten_percent(self):
+        self.assertEqual(retry_delay_seconds(1, -1), 810)
+        self.assertEqual(retry_delay_seconds(1, 1), 990)
+
+    def test_failure_notifications_are_deduplicated(self):
+        notified_attempts = [
+            attempt for attempt in range(1, 20) if should_notify_failure(attempt)
+        ]
+        self.assertEqual(notified_attempts, [1, 4, 11, 18])
 
 
 if __name__ == "__main__":

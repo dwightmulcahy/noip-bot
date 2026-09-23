@@ -28,11 +28,13 @@ class StateStoreEdgeCaseTests(unittest.TestCase):
                 )
             )
             state = StateStore(str(path)).state
-            self.assertEqual(state["schema_version"], 3)
+            self.assertEqual(state["schema_version"], 4)
             self.assertIn("example.ddns.net", state["hosts"])
             self.assertFalse(state["dry_run"])
             self.assertEqual(state["would_renew"], [])
             self.assertFalse(state["notifications"]["enabled"])
+            self.assertEqual(state["retry"]["consecutive_failures"], 0)
+            self.assertIsNone(state["retry"]["next_retry"])
 
     def test_failed_atomic_replace_preserves_previous_file(self):
         with tempfile.TemporaryDirectory() as directory:

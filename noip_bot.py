@@ -7,7 +7,7 @@ import click_config_file
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app_config import AppConfig
-from application import NoIpApplication
+from application import NoIpApplication, RenewalUpdateError
 from emailServer import MarkdownEmailServer, VerificationCodeReader
 from logging_config import configure_logging
 from utils import findFreePort, getMyIpAddr
@@ -152,7 +152,8 @@ def main(
         )
     except RuntimeError as error:
         log.exception("NOIP-BOT runtime exception")
-        application.send_email(config.noip_id, "NOIP-BOT Runtime exception", error)
+        if not isinstance(error, RenewalUpdateError):
+            application.send_email(config.noip_id, "NOIP-BOT Runtime exception", error)
         raise
     except Exception as error:
         log.exception("NOIP-BOT unknown exception")

@@ -11,7 +11,8 @@ optional Gmail notifications, and exposes a small status page.
 - Supports No-IP email verification codes through Gmail
 - Recovers from HTMX stale-element updates
 - Schedules the next run from the displayed expiration information
-- Retries a failed run the following day
+- Escalates failed-run retries from 15 minutes to 1 hour, 6 hours, then 24 hours
+- Sends deduplicated failure alerts and a notification after recovery
 - Stores diagnostic screenshots in a configurable persistent directory
 - Persists verified renewal state atomically across restarts
 - Restores a still-future scheduled check instead of rerunning immediately
@@ -144,9 +145,14 @@ the `status` and `healthy` fields.
 - Derived timing can never postpone a real No-IP check beyond
   `MAX_CHECK_INTERVAL_DAYS`; the default safety cap is five days.
 - State is written atomically after each verified hostname and after every run.
-- The exact timezone-aware scheduler date is persisted for both normal checks
-  and next-day failure retries.
-- The process schedules a next-day retry after a failed No-IP run.
+- The exact timezone-aware scheduler date is persisted for normal checks and
+  failure retries. Retry state survives process and container restarts.
+- Failed runs retry after 15 minutes, 1 hour, 6 hours, and then every 24 hours,
+  with bounded 10% jitter. The counter resets only after a successful run.
+- Failure email is sent on the first failure, on entry into the 24-hour retry
+  tier, and weekly thereafter while the outage continues. This prevents alert
+  spam while preserving long-running outage reminders. Recovery after one or
+  more failures also sends an email.
 - Notification delivery failures are isolated from renewal and scheduling. They
   are recorded under `notifications` in `state.json` and exposed as
   `notification_status` by authenticated `/status.json`; they do not make the

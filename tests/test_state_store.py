@@ -84,6 +84,22 @@ class StateStoreTests(unittest.TestCase):
             self.assertFalse(reloaded["first.ddns.net"]["active"])
             self.assertTrue(reloaded["second.ddns.net"]["active"])
 
+    def test_retry_escalation_persists_and_success_resets_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "state.json")
+            store = StateStore(path)
+            self.assertEqual(store.record_retry_failure(RuntimeError("failed")), 1)
+            self.assertEqual(store.record_retry_failure(RuntimeError("failed")), 2)
+            store.record_retry_scheduled("2026-09-23T12:15:00+00:00")
+
+            retry = StateStore(path).state["retry"]
+            self.assertEqual(retry["consecutive_failures"], 2)
+            self.assertEqual(retry["next_retry"], "2026-09-23T12:15:00+00:00")
+
+            store.record_success()
+            self.assertEqual(StateStore(path).state["retry"]["consecutive_failures"], 0)
+            self.assertIsNone(StateStore(path).state["retry"]["next_retry"])
+
 
 if __name__ == "__main__":
     unittest.main()

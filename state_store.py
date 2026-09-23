@@ -16,7 +16,7 @@ def utc_now():
 class StateStore:
     _PROCESS_LOCK = threading.RLock()
     DEFAULT_STATE = {
-        "schema_version": 3,
+        "schema_version": 4,
         "last_run": None,
         "last_success": None,
         "last_error": None,
@@ -28,6 +28,10 @@ class StateStore:
             "last_attempt": None,
             "last_success": None,
             "last_error": None,
+        },
+        "retry": {
+            "consecutive_failures": 0,
+            "next_retry": None,
         },
         "hosts": {},
     }
@@ -66,6 +70,9 @@ class StateStore:
         notifications = deepcopy(self.DEFAULT_STATE["notifications"])
         notifications.update(loaded.get("notifications", {}))
         state["notifications"] = notifications
+        retry = deepcopy(self.DEFAULT_STATE["retry"])
+        retry.update(loaded.get("retry", {}))
+        state["retry"] = retry
         return state
 
     def _save_unlocked(self):
@@ -149,6 +156,7 @@ class StateStore:
             state["last_error"] = None
             state["next_check"] = next_check
             state["next_renewal_days"] = next_renewal_days
+            state["retry"] = deepcopy(self.DEFAULT_STATE["retry"])
             for hostname, expires_in_days in (host_expirations or {}).items():
                 host = state["hosts"].setdefault(hostname, {})
                 host["expires_in_days"] = expires_in_days
@@ -158,6 +166,30 @@ class StateStore:
 
     def record_next_check(self, next_check):
         self._update(lambda state: state.update(next_check=next_check))
+
+    def record_retry_failure(self, error):
+        result = {}
+
+        def mutation(state):
+            failure_count = int(state["retry"].get("consecutive_failures", 0)) + 1
+            state["last_error"] = {
+                "timestamp": utc_now(),
+                "message": str(error),
+                "type": type(error).__name__,
+            }
+            state["retry"]["consecutive_failures"] = failure_count
+            state["retry"]["next_retry"] = None
+            result["failure_count"] = failure_count
+
+        self._update(mutation)
+        return result["failure_count"]
+
+    def record_retry_scheduled(self, next_retry):
+        def mutation(state):
+            state["next_check"] = next_retry
+            state["retry"]["next_retry"] = next_retry
+
+        self._update(mutation)
 
     def record_failure(self, error):
         def mutation(state):

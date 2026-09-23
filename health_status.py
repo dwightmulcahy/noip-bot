@@ -65,6 +65,7 @@ def evaluate_health(state, now=None, overdue_grace_seconds=3600):
         "would_renew": state.get("would_renew", []),
         "notification_status": notification_status,
         "notifications": notifications,
+        "retry": state.get("retry", {}),
         "host_count": active_hosts,
         "total_host_count": len(hosts),
     }
