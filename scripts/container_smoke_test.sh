@@ -12,7 +12,18 @@ cleanup() {
 trap cleanup EXIT
 
 docker run --detach --name "$container" \
+  --init \
   --no-healthcheck \
+  --read-only \
+  --user 10001:10001 \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --pids-limit 256 \
+  --memory 1g \
+  --shm-size 256m \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777 \
+  --tmpfs /home/noipbot:rw,noexec,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=0700 \
+  --tmpfs /app/data:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=0700 \
   --publish 127.0.0.1::8080 \
   --env SKIP_INITIAL_RUN=true \
   --env STATE_FILE=/app/data/smoke-state.json \

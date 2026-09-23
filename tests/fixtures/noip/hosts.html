@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <a class="list-group-header" href="/dns/records">Hostnames</a>
+    <div class="zone-record" data-label="host=100001" data-name="alpha"
+         data-zone="example.test" data-update="Sep 17, 2026 13:38:34">
+      <span class="popover-info" title="Expires in 5 days"></span>
+      <button hx-get="/ajax/host/100001/touch">Renew</button>
+    </div>
+    <div class="zone-record" data-label="host=100002" data-name="beta"
+         data-zone="example.test" data-update="Sep 21, 2026 10:39:35">
+    </div>
+  </body>
+</html>

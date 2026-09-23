@@ -14,6 +14,7 @@ optional Gmail notifications, and exposes a small status page.
 - Escalates failed-run retries from 15 minutes to 1 hour, 6 hours, then 24 hours
 - Sends deduplicated failure alerts and a notification after recovery
 - Prevents overlapping browser renewals with an inter-process whole-run lock
+- Validates live No-IP markup against tested login, MFA, host, and renewal contracts
 - Stores diagnostic screenshots in a configurable persistent directory
 - Persists verified renewal state atomically across restarts
 - Restores a still-future scheduled check instead of rerunning immediately
@@ -27,6 +28,8 @@ optional Gmail notifications, and exposes a small status page.
 - Protects detailed `/` and `/status.json` responses with bearer authentication
 - Redacts host IDs and exception messages from detailed status output
 - Runs as a non-root container user
+- Runs with a read-only root filesystem, no Linux capabilities, bounded
+  memory/PIDs, and `no-new-privileges`
 
 ## Quick start with Docker Compose
 
@@ -176,9 +179,23 @@ the `status` and `healthy` fields.
 - APScheduler also coalesces missed executions and permits only one instance of
   the renewal job inside a process.
 - Selenium selectors depend on No-IP's website and may need maintenance when
-  the site changes.
+  the site changes. Sanitized HTML fixtures exercise the expected login, six-box
+  MFA, host inventory, renewable-host, verified-renewal, and interstitial page
+  contracts without contacting No-IP during tests. Runtime contract violations
+  are fatal and enter the normal retry and notification path.
 - Docker runs Chromium in headless mode with a persistent verbose ChromeDriver
   log at `data/chromedriver.log`.
+- The Python base image is pinned by exact patch version and multi-architecture
+  digest. Dependabot should be allowed to update this digest so security fixes
+  are deliberate and reviewable rather than silently changing builds.
+- The Compose service runs as UID/GID `10001`, drops every Linux capability,
+  enables `no-new-privileges`, uses a read-only root filesystem, limits the
+  process count to 256 and memory to 1 GiB, and uses an init process for signal
+  forwarding and child reaping. Only `/app/data`, `/tmp`, and the ephemeral
+  browser home are writable. The temporary filesystems are mounted with
+  `nodev`, `nosuid`, and `noexec`.
+- Container shutdown uses `SIGINT` with a 30-second grace period so the Python
+  cleanup path can stop the scheduler and browser before Docker kills it.
 - Automating a third-party site can be affected by its terms and anti-bot
   controls. You are responsible for using this project appropriately.
 

@@ -44,6 +44,12 @@ import logging
 from logging_config import configure_logging
 from state_store import StateStore
 from host_timing import derive_cycle_timing
+from noip_renew.page_contract import (
+    PageContractError,
+    assert_login_contract,
+    assert_verification_contract,
+    parse_host_contract,
+)
 
 SCREENSHOT_DIR = os.environ.get(
     "SCREENSHOT_DIR", os.path.join(os.getcwd(), "screenshots")
@@ -171,6 +177,7 @@ class Robot:
             "Opening login page", extra={"event": "navigation", "url": Robot.LOGIN_URL}
         )
         self.browser.get(Robot.LOGIN_URL)
+        assert_login_contract(self.browser.page_source)
         if self.debug > 1:
             self.browser.save_screenshot(screenshot_path("debug1.png"))
 
@@ -213,6 +220,7 @@ class Robot:
             "Verification code challenge detected",
             extra={"event": "verification_required"},
         )
+        assert_verification_contract(self.browser.page_source)
         if not self.code_reader:
             self.browser.save_screenshot(
                 screenshot_path("verification_code_needed.png")
@@ -262,12 +270,14 @@ class Robot:
             WebDriverWait(self.browser, 15).until(
                 lambda d: d.execute_script("return document.readyState") == "complete"
             )
-        except TimeoutException as e:
+            parse_host_contract(self.browser.page_source)
+        except (TimeoutException, PageContractError) as e:
             self.browser.save_screenshot(screenshot_path("timeout.png"))
             log.error(
-                "Timed out opening host records", extra={"event": "navigation_failed"}
+                "Failed to validate host records page",
+                extra={"event": "navigation_failed"},
             )
-            raise RuntimeError("No-IP host records page did not load") from e
+            raise RuntimeError("No-IP host records page did not load or changed") from e
 
     def _get_host_row(self, host_id):
         return self.browser.find_element(
