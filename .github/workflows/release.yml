@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: docker-release-${{ github.ref_name }}
+  group: docker-release
   cancel-in-progress: false
 
 env:
@@ -21,6 +21,8 @@ jobs:
     name: Verify release image
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      is_latest: ${{ steps.release_version.outputs.is_latest }}
 
     steps:
       - name: Check out released revision
@@ -28,6 +30,30 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
+
+      - name: Determine rolling-tag eligibility
+        id: release_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_version="${RELEASE_TAG#v}"
+          latest_version="$({
+            git tag --list |
+              sed -nE 's/^v?([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' |
+              sort -V |
+              tail -n 1
+          })"
+          if [[ -z "${latest_version}" ]]; then
+            echo "No stable semantic-version tags were found." >&2
+            exit 1
+          fi
+          if [[ "${current_version}" == "${latest_version}" ]]; then
+            echo "is_latest=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is_latest=false" >> "${GITHUB_OUTPUT}"
+          fi
+          echo "Current release: ${current_version}"
+          echo "Latest stable release: ${latest_version}"
 
       - name: Validate release tag and branch
         shell: bash
@@ -111,8 +137,8 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest
+            type=semver,pattern={{major}},enable=${{ needs.preflight.outputs.is_latest == 'true' }}
+            type=raw,value=latest,enable=${{ needs.preflight.outputs.is_latest == 'true' }}
           labels: |
             org.opencontainers.image.title=No-IP Renewal Bot
             org.opencontainers.image.description=Automated No-IP free-host renewal service
