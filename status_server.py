@@ -268,7 +268,7 @@ class StatusServer:
             now = time.monotonic()
             with self._otp_lock:
                 wait_seconds = OTP_RESEND_SECONDS - (now - self._otp_last_sent_at)
-                if wait_seconds > 0:
+                if self._otp_last_sent_at > 0 and wait_seconds > 0:
                     return self._login_page(
                         f"Please wait {int(wait_seconds) + 1} seconds before sending another code.",
                         code_sent=self._otp_challenge is not None,
