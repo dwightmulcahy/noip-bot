@@ -148,6 +148,10 @@ sources, verifies the application imports, builds and boots the Docker image,
 checks `/status.json` and `/health`, and scans the image with Trivy. Fixable
 high or critical vulnerabilities fail verification.
 
+`constraints.txt` records security floors for vulnerable transitive or build
+packages that are present in the final image. These constraints must not be
+lowered merely to make the vulnerability scan pass.
+
 Publishing a GitHub Release builds and pushes a multi-architecture
 `linux/amd64` and `linux/arm64` image to:
 

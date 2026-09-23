@@ -1,0 +1,3 @@
+# Security floors for transitive/build packages detected in the final image.
+msgpack>=1.2.1
+setuptools>=78.1.1
