@@ -28,6 +28,10 @@ class CodeQualityConfigTests(unittest.TestCase):
             with self.subTest(package=package):
                 self.assertFalse((ROOT / package).exists())
 
+    def test_obsolete_flask_template_was_removed(self):
+        self.assertFalse((ROOT / "flask_template.py").exists())
+        self.assertTrue((ROOT / "status_server.py").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
