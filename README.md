@@ -226,8 +226,8 @@ packages before Trivy runs. Trivy ignores pip's embedded
 `pip/_vendor/bom.cdx.json` because it describes pip's build environment—not
 packages installed in this image—and otherwise produces false positives.
 
-Publishing a GitHub Release builds and pushes a multi-architecture
-`linux/amd64` and `linux/arm64` image to:
+Pushing a semantic-version tag whose commit belongs to the `release` branch
+builds and pushes a multi-architecture `linux/amd64` and `linux/arm64` image to:
 
 ```text
 dwightmulcahy/noip-bot
@@ -258,12 +258,16 @@ dwightmulcahy/noip-bot:0
 dwightmulcahy/noip-bot:latest
 ```
 
-Create releases from semantic-version tags:
+The same successful workflow creates the GitHub Release automatically. Its
+notes group conventional commits into sections for features, fixes, security,
+performance, documentation, tests, CI, and maintenance. Re-running a workflow
+updates the existing release instead of creating a duplicate.
+
+Create a release by tagging a commit already on the `release` branch:
 
 ```sh
 git tag -a v0.4.0 -m "No-IP Bot v0.4.0"
 git push origin v0.4.0
-gh release create v0.4.0 --generate-notes
 ```
 
 ## License and attribution

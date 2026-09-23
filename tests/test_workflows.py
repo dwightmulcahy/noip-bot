@@ -50,6 +50,14 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("needs: preflight", workflow)
         self.assertIn("provenance: mode=max", workflow)
         self.assertIn("sbom: true", workflow)
+        self.assertIn("github-release:", workflow)
+        self.assertIn("needs: [preflight, publish]", workflow)
+        self.assertIn("python scripts/generate_release_notes.py", workflow)
+        self.assertIn('gh release create "${RELEASE_TAG}"', workflow)
+        self.assertIn('gh release edit "${RELEASE_TAG}"', workflow)
+        self.assertIn('latest_flag="--latest=false"', workflow)
+        self.assertIn("github-release:", workflow)
+        self.assertIn("      contents: write", workflow)
 
     def test_all_external_actions_are_pinned_to_full_shas(self):
         for path in (ROOT / ".github" / "workflows").glob("*.yml"):
