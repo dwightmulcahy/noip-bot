@@ -12,6 +12,7 @@ from app_config import AppConfig
 from githubMarkdown import GithubMarkdown
 from noip_renew import Robot
 from notifications import send_notification
+from run_lock import WholeRunLock
 from scheduling import (
     cap_future_check,
     days_until_check,
@@ -29,6 +30,10 @@ log = logging.getLogger(__name__)
 
 class RenewalUpdateError(RuntimeError):
     """A renewal failure already handled by retry and notification logic."""
+
+
+class RenewalRunLockedError(RenewalUpdateError):
+    """Raised when another process already owns the renewal-run lock."""
 
 
 class NoIpApplication:
@@ -61,8 +66,28 @@ class NoIpApplication:
         )
 
     def update_hosts(self) -> None:
-        log.info("Updating Hosts.")
         state_store = StateStore()
+        run_lock = WholeRunLock.for_state_file(state_store.path)
+        if not run_lock.acquire():
+            log.warning(
+                "Renewal run skipped because another process owns the lock",
+                extra={
+                    "event": "run_skipped_locked",
+                    "lock_file": run_lock.path,
+                    "lock_owner": run_lock.owner,
+                },
+            )
+            raise RenewalRunLockedError("another renewal run is already in progress")
+        try:
+            self._update_hosts_locked(state_store)
+        finally:
+            run_lock.release()
+
+    def _update_hosts_locked(self, state_store: StateStore) -> None:
+        log.info(
+            "Updating Hosts.",
+            extra={"event": "run_lock_acquired"},
+        )
         previous_failures = int(
             state_store.state.get("retry", {}).get("consecutive_failures", 0)
         )

@@ -13,6 +13,7 @@ optional Gmail notifications, and exposes a small status page.
 - Schedules the next run from the displayed expiration information
 - Escalates failed-run retries from 15 minutes to 1 hour, 6 hours, then 24 hours
 - Sends deduplicated failure alerts and a notification after recovery
+- Prevents overlapping browser renewals with an inter-process whole-run lock
 - Stores diagnostic screenshots in a configurable persistent directory
 - Persists verified renewal state atomically across restarts
 - Restores a still-future scheduled check instead of rerunning immediately
@@ -72,6 +73,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `TZ` | Scheduler timezone | `America/Costa_Rica` |
 | `SCREENSHOT_DIR` | Diagnostic screenshot directory | `/app/data/screenshots` |
 | `STATE_FILE` | Persistent renewal-state JSON file | `/app/data/state.json` |
+| `RUN_LOCK_FILE` | Inter-process renewal lock and owner metadata | `/app/data/renewal.run.lock` |
 | `LOG_LEVEL` | Structured JSON logging level | `INFO` |
 | `HEADLESS` | Run Chromium without a display | `true` in Docker |
 | `CHROMEDRIVER_BIN` | ChromeDriver executable | `/usr/bin/chromedriver` |
@@ -165,6 +167,14 @@ the `status` and `healthy` fields.
 - State updates use an inter-process file lock and reload the latest state
   before mutation so scheduler, web, and notification writers do not overwrite
   one another.
+- A separate non-blocking lock covers the complete Selenium renewal operation.
+  Concurrent processes sharing the data volume cannot both log in or click
+  Renew. Lock contention emits `run_skipped_locked` and does not increment the
+  failure counter, schedule a retry, or send a failure notification. The lock
+  file contains diagnostic PID, hostname, and acquisition time metadata; the
+  operating system releases ownership automatically when a process exits.
+- APScheduler also coalesces missed executions and permits only one instance of
+  the renewal job inside a process.
 - Selenium selectors depend on No-IP's website and may need maintenance when
   the site changes.
 - Docker runs Chromium in headless mode with a persistent verbose ChromeDriver

@@ -10,7 +10,7 @@ class SchedulePersistenceTests(unittest.TestCase):
         update_hosts = next(
             node
             for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef) and node.name == "update_hosts"
+            if isinstance(node, ast.FunctionDef) and node.name == "_update_hosts_locked"
         )
         persisted_methods = [
             node.func.attr

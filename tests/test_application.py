@@ -5,7 +5,8 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 from app_config import AppConfig
-from application import NoIpApplication
+from application import NoIpApplication, RenewalRunLockedError
+from run_lock import WholeRunLock
 from state_store import StateStore
 
 
@@ -90,6 +91,45 @@ class ApplicationTests(unittest.TestCase):
             self.assertEqual(state["retry"]["next_retry"], retry_at.isoformat())
             send_email.assert_called_once()
             self.assertEqual(send_email.call_args.args[1], "NOIP-Bot renewal failure")
+
+    def test_locked_run_does_not_start_robot_or_increment_failures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = os.path.join(directory, "state.json")
+            lock_path = os.path.join(directory, "renewal.run.lock")
+            scheduler = FakeScheduler()
+            config = AppConfig(
+                noip_id="user@example.com",
+                noip_password="secret",
+                bind_address="127.0.0.1",
+                port=8080,
+                timezone="UTC",
+                max_check_interval_days=5,
+                scheduler=scheduler,
+            )
+            robot_factory = Mock(side_effect=AssertionError("robot must not start"))
+            application = NoIpApplication(config, robot_factory=robot_factory)
+
+            owner = WholeRunLock(lock_path)
+            self.assertTrue(owner.acquire())
+            try:
+                with (
+                    patch.dict(
+                        os.environ,
+                        {"STATE_FILE": state_path, "RUN_LOCK_FILE": lock_path},
+                    ),
+                    self.assertLogs("application", level="WARNING") as captured,
+                ):
+                    with self.assertRaises(RenewalRunLockedError):
+                        application.update_hosts()
+            finally:
+                owner.release()
+
+            robot_factory.assert_not_called()
+            self.assertEqual(scheduler.jobs, [])
+            self.assertEqual(
+                StateStore(state_path).state["retry"]["consecutive_failures"], 0
+            )
+            self.assertIn("another process owns the lock", "\n".join(captured.output))
 
 
 if __name__ == "__main__":

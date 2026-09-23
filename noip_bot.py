@@ -120,7 +120,12 @@ def main(
         debug,
     )
     scheduler = BackgroundScheduler(
-        job_defaults={"misfire_grace_time": 60}, timezone=DEFAULT_TIMEZONE
+        job_defaults={
+            "misfire_grace_time": 60,
+            "max_instances": 1,
+            "coalesce": True,
+        },
+        timezone=DEFAULT_TIMEZONE,
     )
     config = AppConfig(
         noip_id=noip_id,

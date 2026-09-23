@@ -23,6 +23,7 @@ ENV CHROME_BIN=/usr/bin/chromium \
     TZ=America/Costa_Rica \
     SCREENSHOT_DIR=/app/data/screenshots \
     STATE_FILE=/app/data/state.json \
+    RUN_LOCK_FILE=/app/data/renewal.run.lock \
     LOG_LEVEL=INFO \
     HEADLESS=true \
     CHROMEDRIVER_BIN=/usr/bin/chromedriver \
