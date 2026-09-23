@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ app_name }} sign in</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='status.css') }}">
+  </head>
+  <body class="login-page">
+    <main class="login-card">
+      <div class="brand-mark" aria-hidden="true">N</div>
+      <p class="eyebrow">No-IP renewal service</p>
+      <h1>{{ app_name }}</h1>
+      <p class="muted">Enter your status token to view renewal health and host details.</p>
+      {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ url_for('login') }}">
+        <label for="token">Status token</label>
+        <input id="token" name="token" type="password" required autofocus autocomplete="current-password">
+        <button type="submit">View status</button>
+      </form>
+    </main>
+  </body>
+</html>

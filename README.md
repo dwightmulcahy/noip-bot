@@ -58,6 +58,11 @@ optional Gmail notifications, and exposes a small status page.
      http://localhost:8080/status.json
    ```
 
+5. Open `http://localhost:8080/` in a browser and sign in with
+   `STATUS_TOKEN` to view the status dashboard. Browser sessions expire after
+   12 hours. Set `STATUS_COOKIE_SECURE=true` when access is exclusively through
+   an HTTPS reverse proxy.
+
 Diagnostic screenshots are written beneath `./data/screenshots`.
 
 ## Configuration
@@ -74,6 +79,7 @@ Diagnostic screenshots are written beneath `./data/screenshots`.
 | `BIND_ADDR` | Status server bind address | `0.0.0.0` in Docker |
 | `PORT` | Status server port | `8080` in Docker |
 | `STATUS_TOKEN` | Bearer token protecting `/` and `/status.json`; minimum 32 characters | detailed status disabled |
+| `STATUS_COOKIE_SECURE` | Require HTTPS for the browser status-session cookie | `false` |
 | `TZ` | Scheduler timezone | `America/Costa_Rica` |
 | `SCREENSHOT_DIR` | Diagnostic screenshot directory | `/app/data/screenshots` |
 | `STATE_FILE` | Persistent renewal-state JSON file | `/app/data/state.json` |
@@ -167,7 +173,8 @@ the `status` and `healthy` fields.
   To expose it to a LAN, deliberately change the port mapping and use a strong
   `STATUS_TOKEN`. `/health` remains unauthenticated but contains no timestamps,
   hostnames, errors, or scheduling details. Detailed endpoints return HTTP 503
-  when no token of at least 32 characters is configured.
+  when no token of at least 32 characters is configured. The dashboard at `/`
+  uses the token to establish a 12-hour, HTTP-only, same-site browser session.
 - State updates use an inter-process file lock and reload the latest state
   before mutation so scheduler, web, and notification writers do not overwrite
   one another.

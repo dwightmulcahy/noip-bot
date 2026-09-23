@@ -82,15 +82,56 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertNotIn("host_id", payload["hosts"]["example.ddns.net"])
         self.assertNotIn("secret upstream failure details", payload["reasons"])
 
-    def test_root_status_page_is_also_protected(self):
+    def test_root_status_page_redirects_to_login_and_accepts_bearer_token(self):
         with patch.dict(os.environ, {"STATUS_TOKEN": STATUS_TOKEN}):
             unauthorized = self.client.get("/")
             authorized = self.client.get(
                 "/", headers={"Authorization": f"Bearer {STATUS_TOKEN}"}
             )
 
-        self.assertEqual(unauthorized.status_code, 401)
+        self.assertEqual(unauthorized.status_code, 302)
+        self.assertEqual(unauthorized.headers["Location"], "/login")
         self.assertEqual(authorized.status_code, 200)
+        self.assertIn(b"Managed records", authorized.data)
+        self.assertIn(b"example.ddns.net", authorized.data)
+        self.assertNotIn(b"secret upstream failure details", authorized.data)
+
+    def test_browser_login_creates_session_and_logout_clears_it(self):
+        with patch.dict(os.environ, {"STATUS_TOKEN": STATUS_TOKEN}):
+            rejected = self.client.post("/login", data={"token": "wrong"})
+            accepted = self.client.post(
+                "/login", data={"token": STATUS_TOKEN}, follow_redirects=True
+            )
+            logged_out = self.client.post("/logout", follow_redirects=False)
+            protected_again = self.client.get("/")
+
+        self.assertEqual(rejected.status_code, 401)
+        self.assertIn(b"incorrect", rejected.data)
+        self.assertEqual(accepted.status_code, 200)
+        self.assertIn(b"No-IP renewal service", accepted.data)
+        self.assertEqual(logged_out.status_code, 302)
+        self.assertEqual(protected_again.status_code, 302)
+
+    def test_dashboard_distinguishes_configured_and_last_run_modes(self):
+        with patch.dict(
+            os.environ,
+            {"STATUS_TOKEN": STATUS_TOKEN, "DRY_RUN": "false"},
+        ):
+            response = self.client.get(
+                "/", headers={"Authorization": f"Bearer {STATUS_TOKEN}"}
+            )
+            payload = self.request_status().get_json()
+
+        self.assertIn(b"Live renewal", response.data)
+        self.assertFalse(payload["configured_dry_run"])
+
+    def test_security_headers_are_applied_to_dashboard(self):
+        with patch.dict(os.environ, {"STATUS_TOKEN": STATUS_TOKEN}):
+            response = self.client.get("/login")
+
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertIn("default-src 'none'", response.headers["Content-Security-Policy"])
 
     def test_server_instances_do_not_share_page_state(self):
         first = StatusServer("first", FakeStateStore)

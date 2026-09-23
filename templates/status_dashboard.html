@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="60">
+    <title>{{ app_name }} status</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='status.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-content">
+        <div>
+          <p class="eyebrow">No-IP renewal service</p>
+          <h1>{{ app_name }}</h1>
+        </div>
+        <div class="header-actions">
+          <span class="status-pill status-{{ status.status }}">
+            <span class="status-dot" aria-hidden="true"></span>{{ status.status|title }}
+          </span>
+          <form method="post" action="{{ url_for('logout') }}">
+            <button class="button-secondary" type="submit">Sign out</button>
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      {% if status.reasons %}
+        <section class="alert alert-error" aria-label="Health problems">
+          <strong>Attention required</strong>
+          <ul>{% for reason in status.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+        </section>
+      {% endif %}
+
+      <section class="summary-grid" aria-label="Service summary">
+        <article class="summary-card">
+          <span class="card-label">Next check</span>
+          <strong>{{ status.next_check|status_time }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="card-label">Last success</span>
+          <strong>{{ status.last_success|status_time }}</strong>
+        </article>
+        <article class="summary-card">
+          <span class="card-label">Run mode</span>
+          <strong>{{ "Dry run" if status.configured_dry_run else "Live renewal" }}</strong>
+          {% if status.dry_run != status.configured_dry_run %}
+            <small>Last run used {{ "dry-run" if status.dry_run else "live" }} mode</small>
+          {% endif %}
+        </article>
+        <article class="summary-card">
+          <span class="card-label">Notifications</span>
+          <strong>{{ status.notification_status|title }}</strong>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Managed records</p>
+            <h2>Hostnames</h2>
+          </div>
+          <span class="count-badge">{{ status.host_count }} active</span>
+        </div>
+        {% if status.hosts %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Hostname</th>
+                  <th>Last updated</th>
+                  <th>Estimated expiration</th>
+                  <th>Renewal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for hostname, host in status.hosts|dictsort %}
+                  <tr>
+                    <td><strong>{{ hostname }}</strong>{% if not host.active %}<small>Inactive</small>{% endif %}</td>
+                    <td>{{ host.data_update or "Not available" }}</td>
+                    <td>
+                      {{ host.estimated_expiration|status_time }}
+                      {% if host.estimated_days_until_expiry is defined and host.estimated_days_until_expiry is not none %}
+                        <small>{{ host.estimated_days_until_expiry }} days estimated</small>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <span class="renewal-pill {{ 'renewal-ready' if host.renewal_available else 'renewal-current' }}">
+                        {{ "Available" if host.renewal_available else "Current" }}
+                      </span>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state">No host records have been observed yet.</div>
+        {% endif %}
+      </section>
+
+      <footer>
+        <span>Uptime {{ status.uptime }}</span>
+        <span>Last run {{ status.last_run|status_time }}</span>
+        <span>Refreshes every 60 seconds</span>
+      </footer>
+    </main>
+  </body>
+</html>

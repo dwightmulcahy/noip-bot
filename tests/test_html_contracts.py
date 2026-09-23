@@ -17,6 +17,16 @@ def fixture(name):
 
 
 class HtmlContractTests(unittest.TestCase):
+    def test_status_dashboard_is_semantic_html_not_raw_markdown(self):
+        template = (
+            Path(__file__).parents[1] / "templates" / "status_dashboard.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('<section class="summary-grid"', template)
+        self.assertIn("<table>", template)
+        self.assertIn("configured_dry_run", template)
+        self.assertNotIn("**Host Name**", template)
+
     def test_login_page_contract(self):
         assert_login_contract(fixture("login.html"))
 
