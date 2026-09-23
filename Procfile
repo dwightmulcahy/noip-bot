@@ -1,1 +1,0 @@
-web: python3 noip_bot.py
