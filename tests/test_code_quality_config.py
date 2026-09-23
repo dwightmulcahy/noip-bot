@@ -23,6 +23,11 @@ class CodeQualityConfigTests(unittest.TestCase):
         source = (ROOT / "app_config.py").read_text(encoding="utf-8")
         self.assertIn("@dataclass(frozen=True, slots=True)", source)
 
+    def test_obsolete_packages_were_removed(self):
+        for package in ("logger", "simpleTable"):
+            with self.subTest(package=package):
+                self.assertFalse((ROOT / package).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
