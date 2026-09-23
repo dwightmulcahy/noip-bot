@@ -125,10 +125,6 @@ Run the unit tests with:
 python3 -m unittest discover -s tests -v
 ```
 
-The project archive includes all internal modules. If PyCharm reports a missing
-`utils.iputils` or `utils.uptime` module, replace the project from the
-current archive rather than reusing an older extracted copy.
-
 To validate renewal discovery without changing any hostname:
 
 ```sh
@@ -147,8 +143,7 @@ the `status` and `healthy` fields.
 
 ## Operational notes
 
-- The supported runtime is Docker or Python 3.12+; obsolete Heroku and Python
-  3.6 compatibility scaffolding has been removed.
+- The supported runtime is Docker or Python 3.12+.
 - A navigation or renewal failure now fails the run instead of being treated as
   “nothing to renew.”
 - A hostname is only recorded as renewed after its confirmation control
