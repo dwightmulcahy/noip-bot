@@ -37,8 +37,12 @@ class NotificationTests(unittest.TestCase):
 
     def send(self, server):
         return send_notification(
-            server, "user@example.com", "subject", RuntimeError("body"),
-            self.store, self.logger,
+            server,
+            "user@example.com",
+            "subject",
+            RuntimeError("body"),
+            self.store,
+            self.logger,
         )
 
     def test_success_is_persisted_and_body_is_text(self):
@@ -65,9 +69,7 @@ class NotificationTests(unittest.TestCase):
     def test_success_clears_previous_failure(self):
         self.send(FakeServer(error=OSError("offline")))
         self.assertTrue(self.send(FakeServer()))
-        self.assertIsNone(
-            StateStore(self.path).state["notifications"]["last_error"]
-        )
+        self.assertIsNone(StateStore(self.path).state["notifications"]["last_error"])
 
     def test_missing_server_is_disabled_not_failed(self):
         self.assertFalse(self.send(None))
@@ -77,15 +79,22 @@ class NotificationTests(unittest.TestCase):
 
     def test_missing_state_store_does_not_block_delivery(self):
         server = FakeServer()
-        self.assertTrue(send_notification(
-            server, "user@example.com", "subject", "body", None, self.logger
-        ))
+        self.assertTrue(
+            send_notification(
+                server, "user@example.com", "subject", "body", None, self.logger
+            )
+        )
 
     def test_hung_provider_is_bounded_and_recorded(self):
         started = time.monotonic()
         delivered = send_notification(
-            SlowServer(), "user@example.com", "subject", "body",
-            self.store, self.logger, timeout_seconds=0.1,
+            SlowServer(),
+            "user@example.com",
+            "subject",
+            "body",
+            self.store,
+            self.logger,
+            timeout_seconds=0.1,
         )
         elapsed = time.monotonic() - started
         self.assertFalse(delivered)

@@ -6,9 +6,7 @@ from datetime import datetime, timezone
 
 
 class JsonFormatter(logging.Formatter):
-    RESERVED = set(logging.makeLogRecord({}).__dict__) | {
-        "message", "asctime"
-    }
+    RESERVED = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 
     def format(self, record):
         payload = {
@@ -32,4 +30,3 @@ def configure_logging(level=None):
     handler.setFormatter(JsonFormatter())
     root.addHandler(handler)
     root.setLevel(level or os.environ.get("LOG_LEVEL", "INFO").upper())
-

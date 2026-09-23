@@ -1,1 +1,1 @@
-from githubMarkdown.githubMarkdown import GithubMarkdown
+from githubMarkdown.githubMarkdown import GithubMarkdown as GithubMarkdown

@@ -4,12 +4,11 @@ import unittest
 
 
 def load_verifier():
-    source_path = (
-        pathlib.Path(__file__).parents[1] / "noip_renew" / "noip_renew.py"
-    )
+    source_path = pathlib.Path(__file__).parents[1] / "noip_renew" / "noip_renew.py"
     tree = ast.parse(source_path.read_text(encoding="utf-8"))
     function = next(
-        node for node in tree.body
+        node
+        for node in tree.body
         if isinstance(node, ast.FunctionDef) and node.name == "renewal_is_verified"
     )
     module = ast.Module(body=[function], type_ignores=[])

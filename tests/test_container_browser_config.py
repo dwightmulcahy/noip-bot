@@ -13,9 +13,9 @@ class ContainerBrowserConfigTests(unittest.TestCase):
 
     def test_browser_has_required_container_flags(self):
         source = (ROOT / "noip_renew" / "noip_renew.py").read_text(encoding="utf-8")
-        self.assertIn("'--headless=new'", source)
-        self.assertIn("'--disable-dev-shm-usage'", source)
-        self.assertIn("'--remote-debugging-pipe'", source)
+        self.assertIn('"--headless=new"', source)
+        self.assertIn('"--disable-dev-shm-usage"', source)
+        self.assertIn('"--remote-debugging-pipe"', source)
 
     def test_error_email_converts_exception_to_text(self):
         source = (ROOT / "notifications.py").read_text(encoding="utf-8")

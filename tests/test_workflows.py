@@ -12,10 +12,13 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("push:", workflow)
         self.assertIn("pull_request:", workflow)
         self.assertIn("python -m unittest discover -s tests -v", workflow)
+        self.assertIn("ruff check .", workflow)
+        self.assertIn("ruff format --check .", workflow)
+        self.assertIn("run: mypy", workflow)
         self.assertRegex(workflow, r"docker/build-push-action@[0-9a-f]{40}")
         self.assertIn("scripts/container_smoke_test.sh", workflow)
         self.assertIn("aquasecurity/trivy-action@", workflow)
-        self.assertIn('severity: CRITICAL,HIGH', workflow)
+        self.assertIn("severity: CRITICAL,HIGH", workflow)
 
     def test_release_publishes_multi_arch_docker_hub_image(self):
         workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()

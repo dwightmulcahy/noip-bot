@@ -56,7 +56,9 @@ class StateStore:
         except FileNotFoundError:
             return deepcopy(self.DEFAULT_STATE)
         except (OSError, ValueError) as exc:
-            raise RuntimeError(f"Unable to load renewal state {self.path}: {exc}") from exc
+            raise RuntimeError(
+                f"Unable to load renewal state {self.path}: {exc}"
+            ) from exc
         state = deepcopy(self.DEFAULT_STATE)
         state.update(loaded)
         state["schema_version"] = self.DEFAULT_STATE["schema_version"]
@@ -102,21 +104,27 @@ class StateStore:
             state["last_error"] = None
             state["dry_run"] = bool(dry_run)
             state["would_renew"] = []
+
         self._update(mutation)
 
     def record_would_renew(self, hostnames):
         self._update(lambda state: state.update(would_renew=list(hostnames)))
 
-    def record_host(self, hostname, old_data_update, new_data_update, observed_details=None):
+    def record_host(
+        self, hostname, old_data_update, new_data_update, observed_details=None
+    ):
         def mutation(state):
             host = state["hosts"].setdefault(hostname, {})
             if observed_details:
                 host.update(observed_details)
-            host.update({
-                "last_verified_renewal": utc_now(),
-                "previous_data_update": old_data_update,
-                "data_update": new_data_update,
-            })
+            host.update(
+                {
+                    "last_verified_renewal": utc_now(),
+                    "previous_data_update": old_data_update,
+                    "data_update": new_data_update,
+                }
+            )
+
         self._update(mutation)
 
     def record_inventory(self, inventory):
@@ -130,9 +138,12 @@ class StateStore:
                 host.update(details)
                 host["last_observed"] = observed
                 host["active"] = True
+
         self._update(mutation)
 
-    def record_success(self, next_check=None, host_expirations=None, next_renewal_days=None):
+    def record_success(
+        self, next_check=None, host_expirations=None, next_renewal_days=None
+    ):
         def mutation(state):
             state["last_success"] = utc_now()
             state["last_error"] = None
@@ -142,6 +153,7 @@ class StateStore:
                 host = state["hosts"].setdefault(hostname, {})
                 host["expires_in_days"] = expires_in_days
                 host["last_observed"] = utc_now()
+
         self._update(mutation)
 
     def record_next_check(self, next_check):
@@ -154,34 +166,39 @@ class StateStore:
                 "message": str(error),
                 "type": type(error).__name__,
             }
+
         self._update(mutation)
 
     def set_notifications_enabled(self, enabled):
-        self._update(
-            lambda state: state["notifications"].update(enabled=bool(enabled))
-        )
+        self._update(lambda state: state["notifications"].update(enabled=bool(enabled)))
 
     def record_notification_success(self):
         def mutation(state):
             timestamp = utc_now()
-            state["notifications"].update({
-                "enabled": True,
-                "last_attempt": timestamp,
-                "last_success": timestamp,
-                "last_error": None,
-            })
+            state["notifications"].update(
+                {
+                    "enabled": True,
+                    "last_attempt": timestamp,
+                    "last_success": timestamp,
+                    "last_error": None,
+                }
+            )
+
         self._update(mutation)
 
     def record_notification_failure(self, error):
         def mutation(state):
             timestamp = utc_now()
-            state["notifications"].update({
-                "enabled": True,
-                "last_attempt": timestamp,
-                "last_error": {
-                    "timestamp": timestamp,
-                    "message": str(error),
-                    "type": type(error).__name__,
-                },
-            })
+            state["notifications"].update(
+                {
+                    "enabled": True,
+                    "last_attempt": timestamp,
+                    "last_error": {
+                        "timestamp": timestamp,
+                        "message": str(error),
+                        "type": type(error).__name__,
+                    },
+                }
+            )
+
         self._update(mutation)

@@ -85,6 +85,16 @@ cp .env.example .env
 python3 noip_bot.py
 ```
 
+Development installs include Ruff, Mypy, and pre-commit:
+
+```sh
+pip install -r requirements-dev.txt
+pre-commit install
+ruff check .
+ruff format --check .
+mypy
+```
+
 Run the unit tests with:
 
 ```sh
@@ -147,6 +157,9 @@ Every push and pull request runs the Python test suite, compiles all Python
 sources, verifies the application imports, builds and boots the Docker image,
 checks `/status.json` and `/health`, and scans the image with Trivy. Fixable
 high or critical vulnerabilities fail verification.
+
+CI also enforces Ruff linting and formatting plus Mypy checks for the typed
+configuration, orchestration, state, scheduling, health, and notification core.
 
 CI separately verifies installed versions of security-sensitive Python
 packages before Trivy runs. Trivy ignores pip's embedded

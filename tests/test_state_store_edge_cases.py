@@ -19,10 +19,14 @@ class StateStoreEdgeCaseTests(unittest.TestCase):
     def test_old_schema_is_migrated_without_losing_hosts(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "state.json"
-            path.write_text(json.dumps({
-                "schema_version": 1,
-                "hosts": {"example.ddns.net": {"active": True}},
-            }))
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "hosts": {"example.ddns.net": {"active": True}},
+                    }
+                )
+            )
             state = StateStore(str(path)).state
             self.assertEqual(state["schema_version"], 3)
             self.assertIn("example.ddns.net", state["hosts"])
@@ -65,13 +69,15 @@ class StateStoreEdgeCaseTests(unittest.TestCase):
                 "new",
                 {"active": True, "host_id": "123"},
             )
-            store.record_inventory({
-                "example.ddns.net": {
-                    "active": True,
-                    "host_id": "123",
-                    "data_update": "new",
+            store.record_inventory(
+                {
+                    "example.ddns.net": {
+                        "active": True,
+                        "host_id": "123",
+                        "data_update": "new",
+                    }
                 }
-            })
+            )
             host = store.state["hosts"]["example.ddns.net"]
             self.assertEqual(host["previous_data_update"], "old")
             self.assertIn("last_verified_renewal", host)
@@ -86,9 +92,7 @@ class StateStoreEdgeCaseTests(unittest.TestCase):
             notification_store.record_notification_success()
 
             state = StateStore(path).state
-            self.assertEqual(
-                state["next_check"], "2026-09-23T12:00:00+00:00"
-            )
+            self.assertEqual(state["next_check"], "2026-09-23T12:00:00+00:00")
             self.assertIsNotNone(state["notifications"]["last_success"])
 
 

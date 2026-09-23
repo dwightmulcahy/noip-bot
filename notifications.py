@@ -19,7 +19,7 @@ def _delivery_timeout_seconds():
 
 
 def _deliver_with_timeout(server, send_to, subject, body, timeout_seconds):
-    result_queue = queue.Queue(maxsize=1)
+    result_queue: queue.Queue[tuple[bool, object]] = queue.Queue(maxsize=1)
 
     def deliver():
         try:
@@ -39,7 +39,9 @@ def _deliver_with_timeout(server, send_to, subject, body, timeout_seconds):
             f"Notification delivery exceeded {timeout_seconds:g} seconds"
         ) from exc
     if not succeeded:
-        raise result
+        if isinstance(result, BaseException):
+            raise result
+        raise RuntimeError("Notification worker returned an invalid error result")
     return result
 
 
