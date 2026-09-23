@@ -22,10 +22,13 @@ class WorkflowTests(unittest.TestCase):
 
     def test_release_publishes_multi_arch_docker_hub_image(self):
         workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()
-        self.assertIn("types:\n      - published", workflow)
+        self.assertIn('tags:\n      - "*.*.*"', workflow)
+        self.assertIn("github.ref_name", workflow)
+        self.assertIn("refs/heads/release:refs/remotes/origin/release", workflow)
+        self.assertIn("git merge-base --is-ancestor", workflow)
         self.assertIn("IMAGE_NAME: dwightmulcahy/noip-bot", workflow)
         self.assertIn("platforms: linux/amd64,linux/arm64", workflow)
-        self.assertIn("APP_VERSION=${{ github.event.release.tag_name }}", workflow)
+        self.assertIn("APP_VERSION=${{ env.RELEASE_TAG }}", workflow)
         self.assertIn("push: true", workflow)
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
