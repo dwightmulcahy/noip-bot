@@ -12,7 +12,10 @@
       <div class="header-content">
         <div>
           <p class="eyebrow">No-IP renewal service</p>
-          <h1>{{ app_name }}</h1>
+          <div class="app-title">
+            <h1>{{ app_name }}</h1>
+            <span class="version-badge">v{{ app_version }}</span>
+          </div>
         </div>
         <div class="header-actions">
           <span class="status-pill status-{{ status.status }}">

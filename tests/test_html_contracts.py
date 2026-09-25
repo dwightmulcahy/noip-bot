@@ -25,6 +25,7 @@ class HtmlContractTests(unittest.TestCase):
         self.assertIn('<section class="summary-grid"', template)
         self.assertIn("<table>", template)
         self.assertIn("configured_dry_run", template)
+        self.assertIn("v{{ app_version }}", template)
         self.assertNotIn("**Host Name**", template)
 
     def test_login_page_contract(self):

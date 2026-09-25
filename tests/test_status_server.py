@@ -50,6 +50,7 @@ class StatusServerSecurityTests(unittest.TestCase):
             FakeStateStore,
             otp_sender=send_message,
             otp_recipient="owner@example.com",
+            app_version="0.5.1",
         )
         self.client = self.server.app.test_client()
 
@@ -108,6 +109,7 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertEqual(unauthorized.headers["Location"], "/login")
         self.assertEqual(authorized.status_code, 200)
         self.assertIn(b"Managed records", authorized.data)
+        self.assertIn(b'<span class="version-badge">v0.5.1</span>', authorized.data)
         self.assertIn(b"example.ddns.net", authorized.data)
         self.assertNotIn(b"secret upstream failure details", authorized.data)
 

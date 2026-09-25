@@ -18,6 +18,7 @@ import waitress
 from health_status import evaluate_health
 from state_store import StateStore
 from utils import UpTime
+from version import get_version
 
 
 log = logging.getLogger(__name__)
@@ -140,8 +141,10 @@ class StatusServer:
         state_store_factory: StateStoreFactory = StateStore,
         otp_sender: OtpSender | None = None,
         otp_recipient: str = "",
+        app_version: str | None = None,
     ) -> None:
         self.app_name = app_name
+        self.app_version = app_version or get_version()
         self.state_store_factory = state_store_factory
         self.uptime = UpTime()
         self._page_message = "Empty!"
@@ -400,6 +403,7 @@ class StatusServer:
                 flask.render_template(
                     "status_dashboard.html",
                     app_name=self.app_name,
+                    app_version=self.app_version,
                     status=self._detailed_status(state),
                     csrf_token=_csrf_token(),
                 ),
