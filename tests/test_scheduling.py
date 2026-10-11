@@ -14,8 +14,13 @@ class SchedulingTests(unittest.TestCase):
     def test_check_delay_never_becomes_zero_or_negative(self):
         self.assertEqual(days_until_check(2, 4), 1)
         self.assertEqual(days_until_check(6, 4), 1)
-        self.assertEqual(days_until_check(10, 4), 4)
+        self.assertEqual(days_until_check(10, 4), 3)
         self.assertEqual(days_until_check(30, 4), 5)
+
+    def test_check_is_scheduled_for_seven_day_renewal_window(self):
+        self.assertEqual(days_until_check(7, 4), 1)
+        self.assertEqual(days_until_check(8, 4), 1)
+        self.assertEqual(days_until_check(9, 4), 2)
 
     def test_fallback_is_used_without_expiration(self):
         self.assertEqual(days_until_check(0, 3), 3)

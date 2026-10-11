@@ -2,12 +2,13 @@ from datetime import datetime, timedelta
 
 
 RETRY_DELAYS_SECONDS = (15 * 60, 60 * 60, 6 * 60 * 60, 24 * 60 * 60)
+RENEWAL_WINDOW_DAYS = 7
 
 
 def days_until_check(next_renewal_days, fallback_days, max_interval_days=5):
     max_interval = max(1, int(max_interval_days))
     if next_renewal_days:
-        calculated = max(1, int(next_renewal_days) - 6)
+        calculated = max(1, int(next_renewal_days) - RENEWAL_WINDOW_DAYS)
     else:
         calculated = max(1, int(fallback_days))
     return min(max_interval, calculated)
