@@ -11,9 +11,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         chromium-driver \
         fonts-liberation \
         libpcre2-8-0 \
+        perl-base \
         tzdata \
     && installed_pcre2="$(dpkg-query -W -f='${Version}' libpcre2-8-0)" \
     && dpkg --compare-versions "$installed_pcre2" ge "10.42-1+deb12u1" \
+    && installed_perl="$(dpkg-query -W -f='${Version}' perl-base)" \
+    && dpkg --compare-versions "$installed_perl" ge "5.36.0-7+deb12u4" \
     && rm -rf /var/lib/apt/lists/*
 
 # Selenium looks for a binary named "chrome"/"google-chrome" by default;
