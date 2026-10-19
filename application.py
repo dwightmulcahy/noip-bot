@@ -15,9 +15,11 @@ from noip_renew import Robot
 from notifications import send_notification
 from run_lock import WholeRunLock
 from scheduling import (
+    RENEWAL_CHECK_MINUTE_CHOICES,
     cap_future_check,
     days_until_check,
     future_check,
+    renewal_check_time,
     retry_delay_seconds,
     should_notify_failure,
 )
@@ -188,8 +190,9 @@ class NoIpApplication:
             self.config.max_check_interval_days,
         )
         next_check_date = date.today() + timedelta(days=check_delay)
-        next_check_hour = 9 + randrange(8)
-        next_check_minute = randrange(59)
+        next_check_hour, next_check_minute = renewal_check_time(
+            randrange(RENEWAL_CHECK_MINUTE_CHOICES)
+        )
         log.info(
             "Next hosts update scheduled on %s %s at %02d:%02d.",
             calendar.month_abbr[next_check_date.month],

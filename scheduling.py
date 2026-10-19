@@ -3,6 +3,15 @@ from datetime import datetime, timedelta
 
 RETRY_DELAYS_SECONDS = (15 * 60, 60 * 60, 6 * 60 * 60, 24 * 60 * 60)
 RENEWAL_WINDOW_DAYS = 7
+RENEWAL_CHECK_START_MINUTE = 5 * 60 + 30
+RENEWAL_CHECK_MINUTE_CHOICES = 3 * 60 + 1
+
+
+def renewal_check_time(minute_offset):
+    offset = int(minute_offset)
+    if not 0 <= offset < RENEWAL_CHECK_MINUTE_CHOICES:
+        raise ValueError("renewal check offset must be between 0 and 180 minutes")
+    return divmod(RENEWAL_CHECK_START_MINUTE + offset, 60)
 
 
 def days_until_check(next_renewal_days, fallback_days, max_interval_days=5):

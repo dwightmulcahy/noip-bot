@@ -5,12 +5,25 @@ from scheduling import (
     cap_future_check,
     days_until_check,
     future_check,
+    renewal_check_time,
     retry_delay_seconds,
     should_notify_failure,
 )
 
 
 class SchedulingTests(unittest.TestCase):
+    def test_renewal_check_time_spans_five_thirty_through_eight_thirty(self):
+        self.assertEqual(renewal_check_time(0), (5, 30))
+        self.assertEqual(renewal_check_time(30), (6, 0))
+        self.assertEqual(renewal_check_time(179), (8, 29))
+        self.assertEqual(renewal_check_time(180), (8, 30))
+
+    def test_renewal_check_time_rejects_out_of_range_offsets(self):
+        with self.assertRaises(ValueError):
+            renewal_check_time(-1)
+        with self.assertRaises(ValueError):
+            renewal_check_time(181)
+
     def test_check_delay_never_becomes_zero_or_negative(self):
         self.assertEqual(days_until_check(2, 4), 1)
         self.assertEqual(days_until_check(6, 4), 1)
