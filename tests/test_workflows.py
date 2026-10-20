@@ -15,6 +15,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("ruff check .", workflow)
         self.assertIn("ruff format --check .", workflow)
         self.assertIn("run: mypy", workflow)
+        self.assertIn('python-version: ["3.12", "3.14"]', workflow)
+        self.assertIn("python-version: ${{ matrix.python-version }}", workflow)
         self.assertRegex(workflow, r"docker/build-push-action@[0-9a-f]{40}")
         self.assertIn("scripts/container_smoke_test.sh", workflow)
         self.assertIn("aquasecurity/trivy-action@", workflow)
