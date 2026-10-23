@@ -35,6 +35,11 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
         self.assertIn("type=semver,pattern={{version}}", workflow)
+        self.assertIn(
+            "type=semver,pattern={{major}}.{{minor}},enable=${{ "
+            "needs.preflight.outputs.is_latest == 'true' }}",
+            workflow,
+        )
         self.assertIn("group: docker-release", workflow)
         self.assertNotIn("group: docker-release-${{ github.ref_name }}", workflow)
         self.assertIn("id: release_version", workflow)

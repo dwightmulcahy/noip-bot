@@ -136,7 +136,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.preflight.outputs.is_latest == 'true' }}
             type=semver,pattern={{major}},enable=${{ needs.preflight.outputs.is_latest == 'true' }}
             type=raw,value=latest,enable=${{ needs.preflight.outputs.is_latest == 'true' }}
           labels: |
