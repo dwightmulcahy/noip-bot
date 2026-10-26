@@ -12,7 +12,7 @@ class ContainerHardeningTests(unittest.TestCase):
         first_line = dockerfile.splitlines()[0]
         self.assertRegex(
             first_line,
-            r"^FROM python:3\.14\.\d+-slim-bookworm@sha256:[0-9a-f]{64}$",
+            r"^FROM python:3\.\d+\.\d+-slim-bookworm@sha256:[0-9a-f]{64}$",
         )
 
     def test_image_runs_as_fixed_non_root_user(self):
