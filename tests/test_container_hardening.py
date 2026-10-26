@@ -88,7 +88,9 @@ class ContainerHardeningTests(unittest.TestCase):
     def test_pcre2_security_update_and_floor_are_enforced(self):
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("libpcre2-8-0", dockerfile)
+        self.assertIn("libssl3", dockerfile)
         self.assertIn('ge "10.42-1+deb12u1"', dockerfile)
+        self.assertIn('ge "3.0.22-1~deb12u2"', dockerfile)
         self.assertIn("dpkg --compare-versions", dockerfile)
 
 
