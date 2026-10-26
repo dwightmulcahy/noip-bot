@@ -60,7 +60,7 @@ class ContainerHardeningTests(unittest.TestCase):
         for setting in (
             "read_only: true",
             'user: "10001:10001"',
-            "cap_drop:\\n      - ALL",
+            "cap_drop:\n      - ALL",
             "no-new-privileges:true",
         ):
             with self.subTest(setting=setting):
