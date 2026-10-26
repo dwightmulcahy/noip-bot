@@ -4,6 +4,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Costa_Rica
+    commit-message:
+      prefix: "build(deps)"
     groups:
       python-dependencies:
         patterns:
@@ -13,11 +18,31 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: America/Costa_Rica
+    commit-message:
+      prefix: "build(docker)"
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: America/Costa_Rica
+    commit-message:
+      prefix: "build(compose)"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "06:45"
+      timezone: America/Costa_Rica
+    commit-message:
+      prefix: "ci(deps)"
     groups:
       github-actions:
         patterns:

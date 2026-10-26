@@ -1,0 +1,55 @@
+services:
+  noip-bot:
+    image: ${IMAGE:-dwightmulcahy/noip-bot:latest}
+    container_name: noip-bot
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "10001:10001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 1g
+    shm_size: 256m
+    stop_signal: SIGINT
+    stop_grace_period: 30s
+    env_file:
+      - .env
+    environment:
+      BIND_ADDR: 0.0.0.0
+      PORT: 8080
+      TZ: ${TZ:-America/Costa_Rica}
+      SCREENSHOT_DIR: /app/data/screenshots
+      STATE_FILE: /app/data/state.json
+      RUN_LOCK_FILE: /app/data/renewal.run.lock
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      HEADLESS: ${HEADLESS:-true}
+      CHROMEDRIVER_BIN: /usr/bin/chromedriver
+      CHROMEDRIVER_LOG: /app/data/chromedriver.log
+      DRY_RUN: ${DRY_RUN:-false}
+      SKIP_INITIAL_RUN: ${SKIP_INITIAL_RUN:-false}
+      MAX_CHECK_INTERVAL_DAYS: ${MAX_CHECK_INTERVAL_DAYS:-5}
+      NOTIFICATION_TIMEOUT_SECONDS: ${NOTIFICATION_TIMEOUT_SECONDS:-30}
+      STATUS_TOKEN: ${STATUS_TOKEN:-}
+      STATUS_LOGIN_EMAIL: ${STATUS_LOGIN_EMAIL:-}
+      STATUS_COOKIE_SECURE: ${STATUS_COOKIE_SECURE:-false}
+    ports:
+      - "${HOST_PORT:-9181}:8080"
+    volumes:
+      - ${QNAP_DATA_DIR:-/share/Container/noip-bot/data}:/app/data
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777
+      - /home/noipbot:rw,noexec,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=0700
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

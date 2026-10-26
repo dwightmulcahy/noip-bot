@@ -9,8 +9,10 @@ ROOT = pathlib.Path(__file__).parents[1]
 class WorkflowTests(unittest.TestCase):
     def test_ci_verifies_pushes_and_pull_requests(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-        self.assertIn("push:", workflow)
+        self.assertIn('branches: ["**"]', workflow)
         self.assertIn("pull_request:", workflow)
+        self.assertIn("workflow_call:", workflow)
+        self.assertIn("workflow_dispatch:", workflow)
         self.assertIn("python -m unittest discover -s tests -v", workflow)
         self.assertIn("ruff check .", workflow)
         self.assertIn("ruff format --check .", workflow)
@@ -54,7 +56,10 @@ class WorkflowTests(unittest.TestCase):
             "needs.preflight.outputs.is_latest == 'true' }}",
             workflow,
         )
-        self.assertIn("needs: preflight", workflow)
+        self.assertIn("validate:", workflow)
+        self.assertIn("uses: ./.github/workflows/ci.yml", workflow)
+        self.assertIn("needs: [preflight, validate]", workflow)
+        self.assertNotIn("Build local release candidate", workflow)
         self.assertIn("provenance: mode=max", workflow)
         self.assertIn("sbom: true", workflow)
         self.assertIn("github-release:", workflow)
@@ -79,6 +84,12 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("package-ecosystem: pip", config)
         self.assertIn("package-ecosystem: docker", config)
         self.assertIn("package-ecosystem: github-actions", config)
+        self.assertIn("package-ecosystem: docker-compose", config)
+        self.assertEqual(config.count("day: monday"), 4)
+        self.assertIn('prefix: "build(deps)"', config)
+        self.assertIn('prefix: "build(docker)"', config)
+        self.assertIn('prefix: "build(compose)"', config)
+        self.assertIn('prefix: "ci(deps)"', config)
 
 
 if __name__ == "__main__":

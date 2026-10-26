@@ -40,6 +40,32 @@ class ContainerHardeningTests(unittest.TestCase):
             with self.subTest(setting=setting):
                 self.assertIn(setting, compose)
 
+    def test_compose_rotates_container_logs(self):
+        for filename in ("docker-compose.yml", "compose.qnap.yaml"):
+            compose = (ROOT / filename).read_text(encoding="utf-8")
+            with self.subTest(filename=filename):
+                self.assertIn("driver: json-file", compose)
+                self.assertIn('max-size: "10m"', compose)
+                self.assertIn('max-file: "3"', compose)
+
+    def test_qnap_compose_pulls_hardened_published_image(self):
+        compose = (ROOT / "compose.qnap.yaml").read_text(encoding="utf-8")
+        self.assertIn("image: ${IMAGE:-dwightmulcahy/noip-bot:latest}", compose)
+        self.assertNotIn("build:", compose)
+        self.assertIn('"${HOST_PORT:-9181}:8080"', compose)
+        self.assertIn(
+            "${QNAP_DATA_DIR:-/share/Container/noip-bot/data}:/app/data",
+            compose,
+        )
+        for setting in (
+            "read_only: true",
+            'user: "10001:10001"',
+            "cap_drop:\\n      - ALL",
+            "no-new-privileges:true",
+        ):
+            with self.subTest(setting=setting):
+                self.assertIn(setting, compose)
+
     def test_smoke_test_uses_production_security_restrictions(self):
         script = (ROOT / "scripts" / "container_smoke_test.sh").read_text(
             encoding="utf-8"

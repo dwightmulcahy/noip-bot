@@ -1,5 +1,14 @@
 # No-IP Renewal Bot
 
+[![Verify](https://github.com/dwightmulcahy/noip-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/dwightmulcahy/noip-bot/actions/workflows/ci.yml)
+[![Release](https://github.com/dwightmulcahy/noip-bot/actions/workflows/release.yml/badge.svg)](https://github.com/dwightmulcahy/noip-bot/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/dwightmulcahy/noip-bot?sort=semver)](https://github.com/dwightmulcahy/noip-bot/releases)
+[![Docker version](https://img.shields.io/docker/v/dwightmulcahy/noip-bot?sort=semver&label=docker)](https://hub.docker.com/r/dwightmulcahy/noip-bot/tags)
+[![Docker pulls](https://img.shields.io/docker/pulls/dwightmulcahy/noip-bot)](https://hub.docker.com/r/dwightmulcahy/noip-bot)
+[![Docker image size](https://img.shields.io/docker/image-size/dwightmulcahy/noip-bot/latest)](https://hub.docker.com/r/dwightmulcahy/noip-bot/tags)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C?logo=dependabot)](https://github.com/dwightmulcahy/noip-bot/security/dependabot)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 A Docker-friendly Python service that logs in to No-IP, confirms eligible free
 hostnames, handles emailed verification codes, schedules the next check, sends
 optional Gmail notifications, and exposes a small status page.
@@ -65,6 +74,24 @@ optional Gmail notifications, and exposes a small status page.
    access is exclusively through an HTTPS reverse proxy.
 
 Diagnostic screenshots are written beneath `./data/screenshots`.
+
+## QNAP Container Station
+
+Use the production Compose file to pull the published multi-architecture image
+instead of building it on the NAS:
+
+```sh
+cp .env.example .env
+# Edit credentials, QNAP_DATA_DIR, HOST_PORT, and IMAGE as needed.
+docker compose -f compose.qnap.yaml pull
+docker compose -f compose.qnap.yaml up -d
+```
+
+The defaults expose the status server on port `9181`, persist application data
+under `/share/Container/noip-bot/data`, and pull
+`dwightmulcahy/noip-bot:latest`. Container logs rotate at 10 MiB with three
+files retained. Ensure the selected QNAP directory is writable by UID/GID
+`10001`.
 
 ## Configuration
 
@@ -210,7 +237,8 @@ the `status` and `healthy` fields.
 
 ## Continuous integration and releases
 
-Every push and pull request runs the Python test suite, compiles all Python
+Every branch push, pull request, and manual workflow run executes the Python
+test suite, compiles all Python
 sources, verifies the application imports, builds and boots the Docker image,
 checks authenticated `/status.json`, rejects unauthorized status access,
 checks minimal `/health`, and scans the image with Trivy. Fixable high or
@@ -226,6 +254,9 @@ packages before Trivy runs. Trivy ignores pip's embedded
 `pip/_vendor/bom.cdx.json` because it describes pip's build environment—not
 packages installed in this image—and otherwise produces false positives.
 
+The release workflow reuses this complete validation suite on the tagged
+revision before publishing, preventing release checks from drifting from CI.
+
 Pushing a semantic-version tag whose commit belongs to the `release` branch
 builds and pushes a multi-architecture `linux/amd64` and `linux/arm64` image to:
 
@@ -234,7 +265,7 @@ dwightmulcahy/noip-bot
 ```
 
 Release images include BuildKit provenance and SPDX SBOM attestations.
-Dependabot maintains Python, Docker, and SHA-pinned GitHub Actions dependencies.
+Dependabot maintains Python, Dockerfile, Compose, and SHA-pinned GitHub Actions dependencies.
 
 The application version is injected from the GitHub Release tag during the
 Docker build. Tags such as `0.2.3` and `v0.2.3` both make the application
