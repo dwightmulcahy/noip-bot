@@ -76,6 +76,8 @@ class WorkflowTests(unittest.TestCase):
             workflow = path.read_text()
             references = re.findall(r"uses:\s+([^\s#]+)", workflow)
             for reference in references:
+                if reference.startswith("./"):
+                    continue
                 with self.subTest(workflow=path.name, reference=reference):
                     self.assertRegex(reference, r"^[^@]+@[0-9a-f]{40}$")
 
