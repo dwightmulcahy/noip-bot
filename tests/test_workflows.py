@@ -31,9 +31,14 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("refs/heads/release:refs/remotes/origin/release", workflow)
         self.assertIn("git merge-base --is-ancestor", workflow)
         self.assertIn("IMAGE_NAME: dwightmulcahy/noip-bot", workflow)
-        self.assertIn("uses: dwightmulcahy/repo-template/.github/workflows/reusable-docker-publish.yml@", workflow)
+        self.assertIn(
+            "uses: dwightmulcahy/repo-template/.github/workflows/reusable-docker-publish.yml@",
+            workflow,
+        )
         self.assertIn("APP_VERSION=${{ github.ref_name }}", workflow)
-        self.assertIn("is_latest: ${{ needs.preflight.outputs.is_latest == 'true' }}", workflow)
+        self.assertIn(
+            "is_latest: ${{ needs.preflight.outputs.is_latest == 'true' }}", workflow
+        )
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
         self.assertIn("group: docker-release", workflow)
