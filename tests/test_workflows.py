@@ -64,7 +64,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("sbom: true", workflow)
         self.assertIn("github-release:", workflow)
         self.assertIn("needs: [preflight, publish]", workflow)
-        self.assertIn("python scripts/standard_release_notes.py", workflow)
+        self.assertIn("dwightmulcahy/repo-template/.github/actions/release-notes@", workflow)
         self.assertIn('gh release create "${RELEASE_TAG}"', workflow)
         self.assertIn('gh release edit "${RELEASE_TAG}"', workflow)
         self.assertIn('latest_flag="--latest=false"', workflow)
