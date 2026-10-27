@@ -144,13 +144,12 @@ jobs:
           fetch-depth: 0
 
       - name: Generate conventional release notes
-        run: >-
-          python scripts/standard_release_notes.py
-          --tag "${RELEASE_TAG}"
-          --project-name "No-IP Bot"
-          --image "dwightmulcahy/noip-bot"
-          --output release-notes.md
-
+        uses: dwightmulcahy/repo-template/.github/actions/release-notes@f3dc1af2146156866574485a20ded5ac35d08a88
+        with:
+          tag: "${RELEASE_TAG}"
+          project-name: "No-IP Bot"
+          image: "dwightmulcahy/noip-bot"
+          output: "release-notes.md"
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
