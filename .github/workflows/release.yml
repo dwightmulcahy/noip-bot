@@ -75,58 +75,20 @@ jobs:
     name: Full validation suite
     uses: ./.github/workflows/ci.yml
 
+
   publish:
-    name: Publish multi-architecture image
-    runs-on: ubuntu-latest
+    name: Publish multiarchitecture Docker Hub image
     needs: [preflight, validate]
-    timeout-minutes: 60
-
-    steps:
-      - name: Check out released revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
-        with:
-          ref: ${{ github.ref_name }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Generate image metadata
-        id: metadata
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.preflight.outputs.is_latest == 'true' }}
-            type=semver,pattern={{major}},enable=${{ needs.preflight.outputs.is_latest == 'true' }}
-            type=raw,value=latest,enable=${{ needs.preflight.outputs.is_latest == 'true' }}
-          labels: |
-            org.opencontainers.image.title=No-IP Renewal Bot
-            org.opencontainers.image.description=Automated No-IP free-host renewal service
-
-      - name: Build and push image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            APP_VERSION=${{ env.RELEASE_TAG }}
-          push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: mode=max
-          sbom: true
+    uses: dwightmulcahy/repo-template/.github/workflows/reusable-docker-publish.yml@d0730dfedd3dd9754d7bb442dbbbe567fe5b4bfd
+    with:
+      image: dwightmulcahy/noip-bot
+      tag: ${{ github.ref_name }}
+      is_latest: ${{ needs.preflight.outputs.is_latest == 'true' }}
+      build_args: |
+        APP_VERSION=${{ github.ref_name }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   github-release:
     name: Publish GitHub release
