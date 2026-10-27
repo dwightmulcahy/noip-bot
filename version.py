@@ -24,3 +24,9 @@ def get_version():
     except (FileNotFoundError, subprocess.SubprocessError):
         return "0.0.0-dev"
     return normalize_version(described) or "0.0.0-dev"
+
+
+def versioned_subject(subject: str, version: str) -> str:
+    """Append the application version to an email subject."""
+    normalized = normalize_version(version) or "0.0.0-dev"
+    return f"{subject} [v{normalized}]"

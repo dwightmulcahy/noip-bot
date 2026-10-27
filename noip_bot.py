@@ -144,7 +144,7 @@ def main(
         test=test,
     )
     scheduler.start()
-    application = NoIpApplication(config, APP_NAME)
+    application = NoIpApplication(config, APP_NAME, app_version=VERSION)
 
     try:
         application.run()

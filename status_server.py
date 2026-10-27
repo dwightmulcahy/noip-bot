@@ -18,7 +18,7 @@ import waitress
 from health_status import evaluate_health
 from state_store import StateStore
 from utils import UpTime
-from version import get_version
+from version import get_version, versioned_subject
 
 
 log = logging.getLogger(__name__)
@@ -285,7 +285,9 @@ class StatusServer:
                 )
                 self._otp_last_sent_at = now
 
-            subject = f"{self.app_name} status login code"
+            subject = versioned_subject(
+                f"{self.app_name} status login code", self.app_version
+            )
             body = (
                 f"Your {self.app_name} status login code is **{code}**.\n\n"
                 f"It expires in {OTP_TTL_SECONDS // 60} minutes and can be used once. "
