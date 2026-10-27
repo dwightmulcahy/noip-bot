@@ -31,37 +31,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("refs/heads/release:refs/remotes/origin/release", workflow)
         self.assertIn("git merge-base --is-ancestor", workflow)
         self.assertIn("IMAGE_NAME: dwightmulcahy/noip-bot", workflow)
-        self.assertIn("platforms: linux/amd64,linux/arm64", workflow)
-        self.assertIn("APP_VERSION=${{ env.RELEASE_TAG }}", workflow)
-        self.assertIn("push: true", workflow)
+        self.assertIn("uses: dwightmulcahy/repo-template/.github/workflows/reusable-docker-publish.yml@", workflow)
+        self.assertIn("APP_VERSION=${{ github.ref_name }}", workflow)
+        self.assertIn("is_latest: ${{ needs.preflight.outputs.is_latest == 'true' }}", workflow)
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
-        self.assertIn("type=semver,pattern={{version}}", workflow)
-        self.assertIn(
-            "type=semver,pattern={{major}}.{{minor}},enable=${{ "
-            "needs.preflight.outputs.is_latest == 'true' }}",
-            workflow,
-        )
         self.assertIn("group: docker-release", workflow)
         self.assertNotIn("group: docker-release-${{ github.ref_name }}", workflow)
         self.assertIn("id: release_version", workflow)
         self.assertIn("fetch-depth: 0", workflow)
-        self.assertIn(
-            "type=semver,pattern={{major}},enable=${{ "
-            "needs.preflight.outputs.is_latest == 'true' }}",
-            workflow,
-        )
-        self.assertIn(
-            "type=raw,value=latest,enable=${{ "
-            "needs.preflight.outputs.is_latest == 'true' }}",
-            workflow,
-        )
         self.assertIn("validate:", workflow)
         self.assertIn("uses: ./.github/workflows/ci.yml", workflow)
         self.assertIn("needs: [preflight, validate]", workflow)
         self.assertNotIn("Build local release candidate", workflow)
-        self.assertIn("provenance: mode=max", workflow)
-        self.assertIn("sbom: true", workflow)
         self.assertIn("github-release:", workflow)
         self.assertIn("needs: [preflight, publish]", workflow)
         self.assertIn(
