@@ -145,8 +145,10 @@ jobs:
 
       - name: Generate conventional release notes
         run: >-
-          python scripts/generate_release_notes.py
+          python scripts/standard_release_notes.py
           --tag "${RELEASE_TAG}"
+          --project-name "No-IP Bot"
+          --image "dwightmulcahy/noip-bot"
           --output release-notes.md
 
       - name: Create or update GitHub release
