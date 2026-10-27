@@ -26,6 +26,7 @@ from scheduling import (
 from state_store import StateStore
 from status_server import StatusServer
 from utils import getMyIpAddr
+from version import get_version, versioned_subject
 
 
 log = logging.getLogger(__name__)
@@ -60,11 +61,13 @@ class NoIpApplication:
         self,
         config: AppConfig,
         app_name: str = "noip_bot",
+        app_version: str | None = None,
         robot_factory: Callable[..., RenewalRobot] = Robot,
         status_server_factory: Callable[..., StatusService] = StatusServer,
     ) -> None:
         self.config = config
         self.app_name = app_name
+        self.app_version = app_version or get_version()
         self.robot_factory = robot_factory
         self.status_server = status_server_factory(
             app_name,
@@ -72,6 +75,7 @@ class NoIpApplication:
             otp_recipient=(
                 os.environ.get("STATUS_LOGIN_EMAIL", "").strip() or config.noip_id
             ),
+            app_version=self.app_version,
         )
 
     def _send_status_login_email(self, recipient: str, subject: str, body: str) -> bool:
@@ -99,7 +103,7 @@ class NoIpApplication:
         return send_notification(
             server=self.config.gmail_server,
             send_to=send_to,
-            subject=subject,
+            subject=versioned_subject(subject, self.app_version),
             body=body,
             state_store=notification_state,
             logger=log,

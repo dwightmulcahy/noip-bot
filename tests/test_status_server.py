@@ -140,6 +140,10 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertEqual(sent.status_code, 200)
         self.assertEqual(len(self.sent_messages), 1)
         self.assertEqual(self.sent_messages[0][0], "owner@example.com")
+        self.assertEqual(
+            self.sent_messages[0][1],
+            "test-noip-bot status login code [v0.5.1]",
+        )
         self.assertIn("123456", self.sent_messages[0][2])
         self.assertEqual(rejected.status_code, 401)
         self.assertIn(b"incorrect", rejected.data)

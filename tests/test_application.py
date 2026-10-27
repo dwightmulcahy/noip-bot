@@ -22,6 +22,36 @@ class FakeScheduler:
 
 
 class ApplicationTests(unittest.TestCase):
+    def test_operational_email_subject_includes_application_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            server = Mock()
+            server.sendEmail.return_value = True
+            config = AppConfig(
+                noip_id="user@example.com",
+                noip_password="secret",
+                bind_address="127.0.0.1",
+                port=8080,
+                timezone="UTC",
+                max_check_interval_days=5,
+                scheduler=FakeScheduler(),
+                gmail_server=server,
+            )
+            application = NoIpApplication(config, app_version="0.5.0")
+
+            with patch.dict(
+                os.environ,
+                {"STATE_FILE": os.path.join(directory, "state.json")},
+            ):
+                self.assertTrue(
+                    application.send_email(
+                        "user@example.com", "NOIP-Bot started", "Started"
+                    )
+                )
+
+            server.sendEmail.assert_called_once_with(
+                "user@example.com", "NOIP-Bot started [v0.5.0]", "Started"
+            )
+
     def test_skip_initial_run_starts_server_without_creating_robot(self):
         with tempfile.TemporaryDirectory() as directory:
             state_path = os.path.join(directory, "state.json")

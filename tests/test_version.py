@@ -2,10 +2,16 @@ import os
 import unittest
 from unittest.mock import patch
 
-from version import get_version, normalize_version
+from version import get_version, normalize_version, versioned_subject
 
 
 class VersionTests(unittest.TestCase):
+    def test_email_subject_includes_normalized_version(self):
+        self.assertEqual(
+            versioned_subject("NOIP-Bot started", "v0.5.0"),
+            "NOIP-Bot started [v0.5.0]",
+        )
+
     def test_normalizes_optional_v_prefix(self):
         self.assertEqual(normalize_version("v0.2.3"), "0.2.3")
         self.assertEqual(normalize_version("0.2.3"), "0.2.3")
