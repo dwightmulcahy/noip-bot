@@ -40,7 +40,11 @@ class WorkflowTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("APP_VERSION=${{ github.ref_name }}", workflow)
-        for alias, output in (("publish_major", "publish_major"), ("publish_minor", "publish_minor"), ("publish_latest", "is_latest")):
+        for alias, output in (
+            ("publish_major", "publish_major"),
+            ("publish_minor", "publish_minor"),
+            ("publish_latest", "is_latest"),
+        ):
             self.assertIn(
                 f"{alias}: ${{{{ needs.preflight.outputs.{output} == 'true' }}}}",
                 workflow,
