@@ -40,9 +40,11 @@ class WorkflowTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("APP_VERSION=${{ github.ref_name }}", workflow)
-        self.assertIn(
-            "is_latest: ${{ needs.preflight.outputs.is_latest == 'true' }}", workflow
-        )
+        for alias, output in (("publish_major", "publish_major"), ("publish_minor", "publish_minor"), ("publish_latest", "is_latest")):
+            self.assertIn(
+                f"{alias}: ${{{{ needs.preflight.outputs.{output} == 'true' }}}}",
+                workflow,
+            )
         self.assertIn("secrets.DOCKERHUB_USERNAME", workflow)
         self.assertIn("secrets.DOCKERHUB_TOKEN", workflow)
         self.assertIn("group: docker-release", workflow)
