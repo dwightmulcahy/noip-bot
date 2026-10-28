@@ -52,12 +52,12 @@ jobs:
             exit 1
           fi
 
-          stable_versions="$(git tag --list | sed -nE 's/^v?([0-9]+\\.[0-9]+\\.[0-9]+)$/\\1/p')"
+          stable_versions="$(git tag --list | sed -nE 's/^v?([0-9]+\.[0-9]+\.[0-9]+)$/\1/p')"
           current="${current_version}"
           major="${current%%.*}"
           minor="${current%.*}"
-          highest_major="$(printf '%s\\n' "$stable_versions" | awk -F. -v m="$major" '$1==m' | sort -V | tail -n 1)"
-          highest_minor="$(printf '%s\\n' "$stable_versions" | awk -F. -v m="$major" -v n="${minor#*.}" '$1==m && $2==n' | sort -V | tail -n 1)"
+          highest_major="$(printf '%s\n' "$stable_versions" | awk -F. -v m="$major" '$1==m' | sort -V | tail -n 1)"
+          highest_minor="$(printf '%s\n' "$stable_versions" | awk -F. -v m="$major" -v n="${minor#*.}" '$1==m && $2==n' | sort -V | tail -n 1)"
           echo "publish_major=$([[ "$current" == "$highest_major" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "publish_minor=$([[ "$current" == "$highest_minor" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           if [[ "${current_version}" == "${latest_version}" ]]; then
