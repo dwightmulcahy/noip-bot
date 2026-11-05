@@ -7,6 +7,8 @@ ARG APP_VERSION=0.0.0-dev
 # chromium-driver version-matched, so no separate driver-download step
 # is needed here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        apt \
+        libapt-pkg6.0 \
         chromium \
         chromium-driver \
         fonts-liberation \
@@ -20,6 +22,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && dpkg --compare-versions "$installed_ssl" ge "3.0.22-1~deb12u2" \
     && installed_perl="$(dpkg-query -W -f='${Version}' perl-base)" \
     && dpkg --compare-versions "$installed_perl" ge "5.36.0-7+deb12u4" \
+    && installed_apt="$(dpkg-query -W -f='${Version}' apt)" \
+    && dpkg --compare-versions "$installed_apt" ge "2.6.2" \
+    && installed_libapt="$(dpkg-query -W -f='${Version}' libapt-pkg6.0)" \
+    && dpkg --compare-versions "$installed_libapt" ge "2.6.2" \
     && rm -rf /var/lib/apt/lists/*
 
 # Selenium looks for a binary named "chrome"/"google-chrome" by default;

@@ -224,6 +224,8 @@ the `status` and `healthy` fields.
 - The image explicitly upgrades `libpcre2-8-0` from Debian security metadata
   and fails the build if it is older than `10.42-1+deb12u1`, preventing the
   pinned base layer from reintroducing the fixed PCRE2 memory-corruption CVEs.
+  `apt` and `libapt-pkg6.0` are upgraded the same way, with a `2.6.2` floor
+  (CVE-2026-109518, on-path attack against package downloads).
 - The Compose service runs as UID/GID `10001`, drops every Linux capability,
   enables `no-new-privileges`, uses a read-only root filesystem, limits the
   process count to 256 and memory to 1 GiB, and uses an init process for signal

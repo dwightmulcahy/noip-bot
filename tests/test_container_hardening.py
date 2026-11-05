@@ -93,6 +93,16 @@ class ContainerHardeningTests(unittest.TestCase):
         self.assertIn('ge "3.0.22-1~deb12u2"', dockerfile)
         self.assertIn("dpkg --compare-versions", dockerfile)
 
+    def test_apt_security_update_and_floor_are_enforced(self):
+        # CVE-2026-109518: apt/libapt-pkg6.0 fixed in Debian 12 at 2.6.2
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertRegex(
+            dockerfile, r"(?m)^\s+apt \\$", "apt must be explicitly upgraded"
+        )
+        self.assertRegex(dockerfile, r"(?m)^\s+libapt-pkg6\.0 \\$")
+        self.assertIn('"$installed_apt" ge "2.6.2"', dockerfile)
+        self.assertIn('"$installed_libapt" ge "2.6.2"', dockerfile)
+
 
 if __name__ == "__main__":
     unittest.main()
