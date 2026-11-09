@@ -4,8 +4,8 @@ apscheduler~=3.11.3
 click~=8.5.0
 click-config-file
 gmail~=0.6.3
-markdown~=3.11.2
+markdown~=3.11.3
 pymdown-extensions~=12.3.0
 selenium~=4.52.0
 webdriver_manager~=4.1.2
-python-dateutil~=3.0.0
+python-dateutil~=4.0.0
