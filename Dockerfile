@@ -1,7 +1,5 @@
 FROM python:3.15.0-slim-bookworm@sha256:0e019bbdfb5d9874cb2389f1c2884b64aa2ac97c99960b5bc521cef978c0617d
 
-ARG APP_VERSION=0.0.0-dev
-
 # chromium-driver installs to /usr/bin/chromedriver, which the app already
 # tries first (see noip_renew/noip_renew.py). Debian keeps chromium and
 # chromium-driver version-matched, so no separate driver-download step
@@ -31,7 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Selenium looks for a binary named "chrome"/"google-chrome" by default;
 # Debian's package is named "chromium", so point it there explicitly.
 ENV CHROME_BIN=/usr/bin/chromium \
-    APP_VERSION=${APP_VERSION} \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     HOME=/home/noipbot \
@@ -65,6 +62,10 @@ RUN mkdir -p /app/data/screenshots \
     && chown -R noipbot:noipbot /app
 
 COPY --chown=noipbot:noipbot . .
+
+# Declared late: CI passes a per-commit value, which would bust every layer below an early ARG
+ARG APP_VERSION=0.0.0-dev
+ENV APP_VERSION=${APP_VERSION}
 
 USER 10001:10001
 
