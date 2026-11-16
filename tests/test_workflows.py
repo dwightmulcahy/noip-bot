@@ -9,7 +9,8 @@ ROOT = pathlib.Path(__file__).parents[1]
 class WorkflowTests(unittest.TestCase):
     def test_ci_verifies_pushes_and_pull_requests(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-        self.assertIn('branches: ["**"]', workflow)
+        self.assertIn("push:\n    branches: [main]", workflow)
+        self.assertNotIn('branches: ["**"]', workflow)
         self.assertIn("pull_request:", workflow)
         self.assertIn("workflow_call:", workflow)
         self.assertIn("workflow_dispatch:", workflow)
