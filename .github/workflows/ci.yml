@@ -2,7 +2,7 @@ name: Verify
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]   # feature branches run via pull_request
   pull_request:
   workflow_call:
   workflow_dispatch:
