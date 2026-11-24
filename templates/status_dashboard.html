@@ -14,7 +14,7 @@
           <p class="eyebrow">No-IP renewal service</p>
           <div class="app-title">
             <h1>{{ app_name }}</h1>
-            <span class="version-badge">v{{ app_version }}</span>
+            <a class="version-badge" href="{{ url_for('root', whats_new=1) }}" title="What's new">v{{ app_version }}</a>
           </div>
         </div>
         <div class="header-actions">
@@ -30,6 +30,32 @@
     </header>
 
     <main class="dashboard">
+      {% if whats_new %}
+        <section class="panel whats-new" aria-labelledby="whatsNewTitle">
+          <div class="panel-heading">
+            <h2 id="whatsNewTitle">{% if whats_new.since %}What's new since v{{ whats_new.since }}{% else %}What's new{% endif %}</h2>
+            <form method="post" action="{{ url_for('whats_new_seen') }}">
+              <input name="csrf_token" type="hidden" value="{{ csrf_token }}">
+              <button class="button-secondary" type="submit">Got it</button>
+            </form>
+          </div>
+          {% for release in whats_new.listed %}
+            <div class="whats-new-release">
+              <h3>v{{ release.version }}{% if release.date %} <small>{{ release.date }}</small>{% endif %}</h3>
+              {% for section in release.sections %}
+                <h4 class="{{ 'breaking' if section.type == 'breaking' }}">{{ section.title }}</h4>
+                <ul>{% for item in section["items"] %}<li>{{ item.text }}</li>{% endfor %}</ul>
+              {% endfor %}
+              {% if release.internal %}<p class="whats-new-internal">+ {{ release.internal }} internal change{{ "s" if release.internal != 1 }} (build, tests, docs)</p>{% endif %}
+            </div>
+          {% else %}
+            <p class="whats-new-internal">No release notes are included in this build.</p>
+          {% endfor %}
+          {% if whats_new.quiet %}
+            <p class="whats-new-internal">Also {% for v in whats_new.quiet %}v{{ v }}{{ ", " if not loop.last }}{% endfor %}: internal changes only.</p>
+          {% endif %}
+        </section>
+      {% endif %}
       {% if status.reasons %}
         <section class="alert alert-error" aria-label="Health problems">
           <strong>Attention required</strong>

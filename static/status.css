@@ -176,3 +176,15 @@ input:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb,
     --shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
   }
 }
+
+/* "What's new" panel (whats_new.py) */
+a.version-badge { text-decoration: none; color: inherit; }
+a.version-badge:hover, a.version-badge:focus-visible { text-decoration: underline; }
+.whats-new { border-left: 4px solid var(--accent); }
+.whats-new-release { margin: 0.75rem 0 1rem; }
+.whats-new-release h3 { margin: 0; font-size: 1rem; }
+.whats-new-release h3 small { color: var(--muted); font-weight: 400; margin-left: 0.4rem; }
+.whats-new-release h4 { margin: 0.5rem 0 0.15rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.whats-new-release h4.breaking { color: #b91c1c; }
+.whats-new-release ul { margin: 0.15rem 0; padding-left: 1.2rem; }
+.whats-new-internal { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0 0; }
