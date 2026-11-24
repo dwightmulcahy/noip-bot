@@ -1,4 +1,4 @@
-FROM python:3.15.0-slim-bookworm@sha256:0e019bbdfb5d9874cb2389f1c2884b64aa2ac97c99960b5bc521cef978c0617d
+FROM python:3.15.1-slim-bookworm@sha256:575f8bc12ec26542e0678bc6b60e385218248019d433157ec327264a78c3a853
 
 # chromium-driver installs to /usr/bin/chromedriver, which the app already
 # tries first (see noip_renew/noip_renew.py). Debian keeps chromium and
@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && dpkg --compare-versions "$installed_apt" ge "2.6.2" \
     && installed_libapt="$(dpkg-query -W -f='${Version}' libapt-pkg6.0)" \
     && dpkg --compare-versions "$installed_libapt" ge "2.6.2" \
+    && installed_chromium="$(dpkg-query -W -f='${Version}' chromium)" \
+    && dpkg --compare-versions "$installed_chromium" ge "156.0.8078.108-1~deb12u1" \
     && rm -rf /var/lib/apt/lists/*
 
 # Selenium looks for a binary named "chrome"/"google-chrome" by default;
@@ -62,6 +64,11 @@ RUN mkdir -p /app/data/screenshots \
     && chown -R noipbot:noipbot /app
 
 COPY --chown=noipbot:noipbot . .
+
+# Release notes for the dashboard's "What's new" panel (base64 JSON from
+# scripts/build_changelog.py, set by the release workflow); none in dev builds
+ARG CHANGELOG_B64=
+RUN if [ -n "${CHANGELOG_B64}" ]; then printf '%s' "${CHANGELOG_B64}" | base64 -d > /app/changelog.json; fi
 
 # Declared late: CI passes a per-commit value, which would bust every layer below an early ARG
 ARG APP_VERSION=0.0.0-dev

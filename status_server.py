@@ -9,12 +9,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 import flask
 import waitress
 
+import whats_new
 from health_status import evaluate_health
 from state_store import StateStore
 from utils import UpTime
@@ -142,9 +144,11 @@ class StatusServer:
         otp_sender: OtpSender | None = None,
         otp_recipient: str = "",
         app_version: str | None = None,
+        changelog_path: Path | None = None,
     ) -> None:
         self.app_name = app_name
         self.app_version = app_version or get_version()
+        self.changelog_path = changelog_path
         self.state_store_factory = state_store_factory
         self.uptime = UpTime()
         self._page_message = "Empty!"
@@ -395,22 +399,53 @@ class StatusServer:
             state = self.state_store_factory().state
             return flask.jsonify(self._detailed_status(state)), HTTPStatus.OK
 
+        @self.app.post("/whats-new/seen")
+        def whats_new_seen() -> flask.Response:
+            if not _is_authorized():
+                return flask.redirect(flask.url_for("login"))
+            if not _csrf_is_valid():
+                flask.abort(HTTPStatus.BAD_REQUEST)
+            response = flask.redirect(flask.url_for("root"))
+            self._remember_version(response)
+            return response
+
         @self.app.route("/")
         def root() -> tuple[str, HTTPStatus] | flask.Response:
             log.debug("%s / endpoint executing", self.app_name)
             if not _is_authorized():
                 return flask.redirect(flask.url_for("login"))
             state = self.state_store_factory().state
-            return (
+            seen = flask.request.cookies.get(whats_new.SEEN_COOKIE)
+            notes = whats_new.panel(
+                whats_new.load(self.changelog_path),
+                self.app_version,
+                seen,
+                requested=flask.request.args.get("whats_new") == "1",
+            )
+            response = flask.make_response(
                 flask.render_template(
                     "status_dashboard.html",
                     app_name=self.app_name,
                     app_version=self.app_version,
                     status=self._detailed_status(state),
                     csrf_token=_csrf_token(),
+                    whats_new=notes,
                 ),
                 HTTPStatus.OK,
             )
+            if not seen:  # first visit: nothing to compare with yet
+                self._remember_version(response)
+            return response
+
+    def _remember_version(self, response: flask.Response) -> None:
+        response.set_cookie(
+            whats_new.SEEN_COOKIE,
+            self.app_version,
+            max_age=5 * 365 * 86400,
+            httponly=True,
+            samesite="Lax",
+            secure=_environment_flag("STATUS_COOKIE_SECURE"),
+        )
 
     def serve(self, bind: str, port: int, debug: bool = False) -> None:
         if debug:

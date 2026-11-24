@@ -26,3 +26,6 @@ logs/
 *.log
 *.png
 verification_code_page.html
+
+# generated at release time (scripts/build_changelog.py)
+/changelog.json

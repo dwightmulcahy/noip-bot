@@ -103,6 +103,12 @@ class ContainerHardeningTests(unittest.TestCase):
         self.assertIn('"$installed_apt" ge "2.6.2"', dockerfile)
         self.assertIn('"$installed_libapt" ge "2.6.2"', dockerfile)
 
+    def test_chromium_security_floor_is_enforced(self):
+        # CVE-2026-118333 (critical) and others: fixed in Debian 12 at 156.0.8078.108;
+        # the floor also invalidates a cached apt layer holding an older build
+        dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn('"$installed_chromium" ge "156.0.8078.108-1~deb12u1"', dockerfile)
+
 
 if __name__ == "__main__":
     unittest.main()
