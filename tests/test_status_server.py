@@ -109,7 +109,7 @@ class StatusServerSecurityTests(unittest.TestCase):
         self.assertEqual(unauthorized.headers["Location"], "/login")
         self.assertEqual(authorized.status_code, 200)
         self.assertIn(b"Managed records", authorized.data)
-        self.assertIn(b'<span class="version-badge">v0.5.1</span>', authorized.data)
+        self.assertIn(b'title="What\'s new">v0.5.1</a>', authorized.data)
         self.assertIn(b"example.ddns.net", authorized.data)
         self.assertNotIn(b"secret upstream failure details", authorized.data)
 

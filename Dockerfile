@@ -65,6 +65,11 @@ RUN mkdir -p /app/data/screenshots \
 
 COPY --chown=noipbot:noipbot . .
 
+# Release notes for the dashboard's "What's new" panel (base64 JSON from
+# scripts/build_changelog.py, set by the release workflow); none in dev builds
+ARG CHANGELOG_B64=
+RUN if [ -n "${CHANGELOG_B64}" ]; then printf '%s' "${CHANGELOG_B64}" | base64 -d > /app/changelog.json; fi
+
 # Declared late: CI passes a per-commit value, which would bust every layer below an early ARG
 ARG APP_VERSION=0.0.0-dev
 ENV APP_VERSION=${APP_VERSION}
