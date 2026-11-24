@@ -1,4 +1,4 @@
-FROM python:3.15.0-slim-bookworm@sha256:0e019bbdfb5d9874cb2389f1c2884b64aa2ac97c99960b5bc521cef978c0617d
+FROM python:3.15.1-slim-bookworm@sha256:575f8bc12ec26542e0678bc6b60e385218248019d433157ec327264a78c3a853
 
 # chromium-driver installs to /usr/bin/chromedriver, which the app already
 # tries first (see noip_renew/noip_renew.py). Debian keeps chromium and
