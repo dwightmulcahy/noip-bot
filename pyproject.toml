@@ -22,6 +22,7 @@ files = [
     "state_store.py",
     "status_server.py",
     "version.py",
+    "whats_new.py",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"

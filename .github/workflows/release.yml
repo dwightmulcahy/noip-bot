@@ -27,6 +27,7 @@ jobs:
       is_latest: ${{ steps.release_version.outputs.is_latest }}
       publish_major: ${{ steps.release_version.outputs.publish_major }}
       publish_minor: ${{ steps.release_version.outputs.publish_minor }}
+      changelog: ${{ steps.changelog.outputs.b64 }}
 
     steps:
       - name: Check out released revision
@@ -84,6 +85,14 @@ jobs:
             exit 1
           fi
 
+      - name: Bundle release notes for the "What's new" panel
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/build_changelog.py --upto "${RELEASE_TAG}" --repository "${GITHUB_REPOSITORY}" --output changelog.json
+          echo "b64=$(base64 -w0 changelog.json)" >> "${GITHUB_OUTPUT}"
+
   validate:
     name: Full validation suite
     uses: ./.github/workflows/ci.yml
@@ -101,6 +110,7 @@ jobs:
       publish_latest: ${{ needs.preflight.outputs.is_latest == 'true' }}
       build_args: |
         APP_VERSION=${{ github.ref_name }}
+        CHANGELOG_B64=${{ needs.preflight.outputs.changelog }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
