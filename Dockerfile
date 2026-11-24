@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && dpkg --compare-versions "$installed_apt" ge "2.6.2" \
     && installed_libapt="$(dpkg-query -W -f='${Version}' libapt-pkg6.0)" \
     && dpkg --compare-versions "$installed_libapt" ge "2.6.2" \
+    && installed_chromium="$(dpkg-query -W -f='${Version}' chromium)" \
+    && dpkg --compare-versions "$installed_chromium" ge "156.0.8078.108-1~deb12u1" \
     && rm -rf /var/lib/apt/lists/*
 
 # Selenium looks for a binary named "chrome"/"google-chrome" by default;
